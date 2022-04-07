@@ -1,0 +1,18 @@
+# These tasks are removed from the tasklist, for reasons described below.
+
+# We don't have data for simple_arithmetic, and the others seem to be mostly used as examples.
+simple_arithmetic
+simple_arithmetic_json
+simple_arithmetic_json_multiple_choice
+simple_arithmetic_json_subtasks
+simple_arithmetic_multiple_targets_json
+
+# We don't have instance level data for these.
+long_context_integration
+convinceme
+
+# Added too late for inclusion in BIG-bench paper
+contextual_parametric_knowledge_conflicts
+
+# Meta-tasks
+training_on_test_set 
