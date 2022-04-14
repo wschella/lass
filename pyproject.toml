@@ -6,9 +6,9 @@ authors     = ["Wout Schellaert <wout.schellaert@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.8,<3.9"
-# There are incompatible dependencies in big-bench, and in general, we only need
-# their data.
-# big-bench = { path = "./BIG-bench" }
+# We removed all dependencies of bigbench. In general we only need 
+# their utility classes and types, which are base python.
+big-bench    = { path = "./bigbench", develop = true }
 ipywidgets   = "^7.6.3"
 ipykernel    = "^6.0.3"
 jupyterlab   = "^3.1.1"
