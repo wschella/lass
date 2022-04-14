@@ -1,6 +1,7 @@
 artifacts/logs/*
 !artifacts/.gitkeep
 !artifacts/logs/.gitkeep
+notebooks/test_trainer/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

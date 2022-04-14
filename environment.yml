@@ -12,3 +12,10 @@ dependencies:
   - python=3.8
   - poetry=1.1
   - cudatoolkit=11.3
+  
+  # We manage torch here, because we can't access torch+cu113 through poetry.
+  # NOTE: This might give problems with dependencies (e.g. numpy) also being
+  # managed by poetry.
+  # https://github.com/python-poetry/poetry/issues/1391
+  - pytorch=1.11
+  - torchdata=0.3.0
