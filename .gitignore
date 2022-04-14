@@ -1,5 +1,6 @@
-data/*
-!data/.gitkeep
+artifacts/logs/*
+!artifacts/.gitkeep
+!artifacts/logs/.gitkeep
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
