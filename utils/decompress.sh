@@ -4,7 +4,7 @@ decompress() {
   task=$(echo $path | cut -d'/' -f4)
   echo "Decompressing $task"
   mkdir -p data/$task
-  lrzuntar -q -p 1 -O data/$task/ -d $path
+  lrzuntar -q -p 1 -O artifacts/logs/$task/ -d $path
 }
 export -f decompress
 
