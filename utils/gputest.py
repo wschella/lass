@@ -1,4 +1,4 @@
-#! /home/wout/pp/llm-assessors/.env/bin/python
+#! .env/bin/python
 import torch
 
 
