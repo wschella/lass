@@ -1,5 +1,5 @@
 [tool.poetry]
-name        = "bigbench-play"
+name        = "lmasss"
 version     = "0.1.0"
 description = ""
 authors     = ["Wout Schellaert <wout.schellaert@gmail.com>"]
