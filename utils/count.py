@@ -7,13 +7,15 @@ import bigbench.api.results as bb
 
 
 def main():
-    # TODO: Just try removing ARC, because no targets
-    loader = LogLoader()\
-        .with_tasks('paper-lite')\
+    loader = LogLoader("./artifacts/logs")\
+        .with_tasks('paper-full')\
         .with_model_families(['BIG-G T=0'])\
         .with_model_sizes(['2m'])\
-        .with_query_types([bb.GenerativeQuery])\
-        # .with_shots([], include_unknown=True)\
+        # .with_query_types([bb.MultipleChoiceQuery])\
+    # .with_shots([0])\
+    # .with_shots([], include_unknown=True)\
+    # .with_query_types([bb.ScoringQuery])\
+    # .with_query_types([bb.GenerativeQuery])\
 
     total_queries = 0
     total_samples = 0
