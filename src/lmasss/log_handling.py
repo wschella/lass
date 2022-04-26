@@ -10,7 +10,7 @@ import bigbench.api.results as bb
 MODEL_FAMILIES = [
     "BIG-G T=0",
     "BIG-G T=1",
-    "BIG-G-sparse",
+    "BIG-G sparse",
 ]
 
 MODEL_SIZES = [
@@ -28,7 +28,8 @@ MODEL_SIZES = [
     "128b",
 ]
 
-Unit = Union[Literal['results-file'], Literal['query'], Literal['sample']]
+TaskLogs = Dict[Tuple[str, str], bb.ResultsFileData]
+Unit = Union[Literal['task'], Literal['results-file'], Literal['query'], Literal['sample']]
 QueryFunction = Union[Literal['cond_log_prob'], Literal['generate_text']]
 
 
@@ -47,18 +48,25 @@ class LogLoader():
     query_functions: Optional[List[QueryFunction]] = None
     shots: Optional[List[Union[int, None]]] = None
 
-    def __init__(self, logdir: Path = Path('./artifacts/logs'), progress_bar: bool = False):
+    def __init__(self, logdir: Union[Path, str], progress_bar: bool = False):
         self.progress_bar = progress_bar
-        self.logdir = logdir
+        self.logdir = Path(logdir)
 
         self.output_unit = 'results-file'
         self.tasks = PaperTasks.full()
+        for task in LogIssues.with_issues():
+            self.tasks.remove(task)
 
     def with_output_unit(self, unit: Unit) -> LogLoader:
         self.output_unit = unit
         return self
 
-    def with_tasks(self, tasklist: Union[Literal['paper-full'], Literal['paper-lite'], List[str]]) -> LogLoader:
+    def with_tasks(self, tasklist: Union[
+            Literal['paper-full'],
+            Literal['paper-lite'],
+            List[str]],
+            exclude_faulty: bool = True,
+    ) -> LogLoader:
         if tasklist == 'paper-full':
             self.tasks = PaperTasks.full()
         elif tasklist == 'paper-lite':
@@ -67,6 +75,12 @@ class LogLoader():
             self.tasks = tasklist
         else:
             raise ValueError(f"Unknown tasklist: {tasklist}")
+
+        if exclude_faulty:
+            for task in LogIssues.with_issues():
+                if task in self.tasks:
+                    self.tasks.remove(task)
+
         return self
 
     def with_model_families(self, families: List[str]) -> LogLoader:
@@ -107,6 +121,9 @@ class LogLoader():
         for task in tqdm(self.tasks, disable=not self.progress_bar):
             logfiles = (self.logdir / task).glob('*.json')
 
+            # Collection of results all models for when output_type is 'task'.
+            results: TaskLogs = {}
+
             # Iterate over all models we care about.
             for path in logfiles:
                 # Filter out models we don't care about.
@@ -128,13 +145,24 @@ class LogLoader():
 
                     # Delegate yielding to specialised handlers
                     if self.output_unit == 'results-file':
-                        yield from self._yield_for_task(logs)
+                        yield from self._yield_for_model(logs)
                     if self.output_unit == 'query':
                         yield from self._yield_for_query(logs)
                     if self.output_unit == 'sample':
                         yield from self._yield_for_sample(logs)
+                    if self.output_unit == 'task':
+                        results[(model_family, model_size)] = logs
+                        continue
 
-    def _yield_for_task(self, results: bb.ResultsFileData) -> Iterator[bb.ResultsFileData]:
+            if self.output_unit == 'task':
+                yield from self._yield_for_task(results)
+
+    def _yield_for_task(self, results: TaskLogs) -> Iterator[TaskLogs]:
+        for key, logs in results.items():
+            results[key] = next(self._yield_for_model(logs))
+        yield results
+
+    def _yield_for_model(self, results: bb.ResultsFileData) -> Iterator[bb.ResultsFileData]:
         if results.queries is not None:
             results.queries = [q for q in results.queries if self._include_query(q)]
         yield results
@@ -174,9 +202,60 @@ class LogLoader():
         return model_family, model_size
 
 
+class LogIssues():
+    @staticmethod
+    def with_issues():
+        """
+        Returns a list of all tasks with some issues and might need to be avoided
+        unless special care is taken.
+        """
+        return LogIssues.with_different_samples() + LogIssues.without_target()
+
+    @staticmethod
+    def with_different_samples():
+        """
+        Returns a list of tasks where the log files have different samples for
+        the different models.
+        """
+        return [
+            "periodic_elements",  # different amount of queries
+        ]
+
+    @staticmethod
+    def without_target():
+        """
+        Returns a list of tasks where the log files have no target included in
+        the samples, causing parsing errors.
+        """
+        return [
+            "abstraction_and_reasoning_corpus",
+            "coqa_conversational_question_answering",
+            "cycled_letters",
+            "high_low_game",
+            "multistep_arithmetic",
+            "muslim_violence_bias",
+            "program_synthesis",
+            "python_programming_challenge",
+            "question_answer_creation",
+            "roots_optimization_and_games",
+            "self_awareness",
+            "self_evaluation_courtroom",
+            "self_evaluation_tutoring",
+            "spelling_bee",
+            "squad_shifts",
+            "sudoku",
+            "taboo",
+            "text_navigation_game",
+            "truthful_qa",
+            "twenty_questions",
+            "word_problems_on_sets_and_graphs",
+            "yes_no_black_white",
+        ]
+
+
 class PaperTasks():
 
-    @ staticmethod
+    @staticmethod
     def full():
         """
         Returns the full list of tasks that have been used for the BIG-bench paper.
@@ -385,7 +464,7 @@ class PaperTasks():
             "yes_no_black_white",
         ]
 
-    @ staticmethod
+    @staticmethod
     def lite():
         """
         Returns the list of tasks that have been used in the "lite" set of tasks
