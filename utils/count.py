@@ -2,7 +2,7 @@
 from typing import *
 import textwrap
 
-from lmasss.log_handling import LogLoader
+from lass.log_handling import LogLoader
 import bigbench.api.results as bb
 
 

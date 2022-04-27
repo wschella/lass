@@ -1,7 +1,7 @@
 [tool.poetry]
-name        = "lmasss"
+name        = "lass"
 version     = "0.1.0"
-description = ""
+description = "Assessors for language models"
 authors     = ["Wout Schellaert <wout.schellaert@gmail.com>"]
 
 [tool.poetry.dependencies]
@@ -19,8 +19,8 @@ scikit-learn = "^1.0.1"
 matplotlib   = "^3.4.3"
 datasets     = "^2.1.0"
 transformers = "^4.18.0"
-wandb = "^0.12.15"
-scipy = "^1.8.0"
+wandb        = "^0.12.15"
+scipy        = "^1.8.0"
 
 [tool.poetry.dev-dependencies]
 nbdime   = "^3.1.0"

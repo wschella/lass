@@ -15,7 +15,7 @@ import bigbench.api.results as bb
 
 from tqdm import tqdm
 
-from lmasss.log_handling import LogLoader, TaskLogs
+from lass.log_handling import LogLoader, TaskLogs
 
 
 def test_whether_samples_in_same_order_model_wise():
