@@ -209,16 +209,115 @@ class LogIssues():
         Returns a list of all tasks with some issues and might need to be avoided
         unless special care is taken.
         """
-        return LogIssues.with_different_samples() + LogIssues.without_target()
+        return LogIssues.with_different_samples_model_wise() + LogIssues.without_target()
 
     @staticmethod
-    def with_different_samples():
+    def with_different_samples_model_wise():
         """
-        Returns a list of tasks where the log files have different samples for
-        the different models.
+        Returns a list of tasks where the log files have different samples
+        across different models.
         """
         return [
             "periodic_elements",  # different amount of queries
+        ]
+
+    @staticmethod
+    def with_different_samples_shotwise():
+        """
+        Returns a list of tasks where the log files have different samples
+        across different shots.
+        Note: TODO: This is preliminary, some further investigation is needed to verify.
+        """
+        return [
+            "anachronisms",
+            "analogical_similarity",
+            "analytic_entailment",
+            "arithmetic",
+            "authorship_verification",
+            "causal_judgment",
+            "cause_and_effect",
+            "code_line_description",
+            "common_morpheme",
+            "conceptual_combinations",
+            "crash_blossom",
+            "crass_ai",
+            "cryobiology_spanish",
+            "cs_algorithms",
+            "dark_humor_detection",
+            "date_understanding",
+            "disambiguation_qa",
+            "discourse_marker_prediction",
+            "dyck_languages",
+            "emoji_movie",
+            "emojis_emotion_prediction",
+            "empirical_judgments",
+            "english_proverbs",
+            "english_russian_proverbs",
+            "entailed_polarity",
+            "entailed_polarity_hindi",
+            "evaluating_information_essentiality",
+            "fact_checker",
+            "fantasy_reasoning",
+            "figure_of_speech_detection",
+            "general_knowledge",
+            "geometric_shapes",
+            "gre_reading_comprehension",
+            "hhh_alignment",
+            "hindu_knowledge",
+            "hinglish_toxicity",
+            "human_organs_senses",
+            "identify_math_theorems",
+            "identify_odd_metaphor",
+            "implicatures",
+            "implicit_relations",
+            "intent_recognition",
+            "international_phonetic_alphabet_nli",
+            "irony_identification",
+            "kanji_ascii",
+            "kannada",
+            "key_value_maps",
+            "known_unknowns",
+            "logic_grid_puzzle",
+            "logical_args",
+            "logical_deduction",
+            "logical_sequence",
+            "mathematical_induction",
+            "metaphor_boolean",
+            "metaphor_understanding",
+            "minute_mysteries_qa",
+            "misconceptions",
+            "moral_permissibility",
+            "movie_recommendation",
+            "navigate",
+            "nonsense_words_grammar",
+            "novel_concepts",
+            "odd_one_out",
+            "penguins_in_a_table",
+            "persian_idioms",
+            "phrase_relatedness",
+            "physical_intuition",
+            "physics",
+            "presuppositions_as_nli",
+            "riddle_sense",
+            "ruin_names",
+            "salient_translation_error_detection",
+            "sentence_ambiguity",
+            "similarities_abstraction",
+            "simple_ethical_questions",
+            "snarks",
+            "social_support",
+            "sports_understanding",
+            "strange_stories",
+            "suicide_risk",
+            "swahili_english_proverbs",
+            "swedish_to_german_proverbs",
+            "symbol_interpretation",
+            "temporal_sequences",
+            "understanding_fables",
+            "undo_permutation",
+            "unit_interpretation",
+            "what_is_the_tao",
+            "which_wiki_edit",
         ]
 
     @staticmethod
