@@ -1,5 +1,4 @@
 from __future__ import annotations
-from tkinter import E
 from typing import *
 from pathlib import Path
 import json
@@ -28,17 +27,30 @@ MODEL_SIZES = [
     "128b",
 ]
 
-TaskLogs = Dict[Tuple[str, str], bb.ResultsFileData]
-Unit = Union[Literal['task'], Literal['results-file'], Literal['query'], Literal['sample']]
+# Identify a trained LM by its model family + size.
+ModelId = Tuple[str, str]
+
+# The log for a specific model on a single task
+# ModelLog  = bb.ResultsFileData
+
+# The logs for multiple models on a single task
+TaskLog = Dict[ModelId, bb.ResultsFileData]
+
+# The multiple types of query functions
 QueryFunction = Union[Literal['cond_log_prob'], Literal['generate_text']]
 
 
 class LogLoader():
     """
     Build a stream of tasks/queries/samples filtered by task/model/shots.
+
+    After configuration, exposes 4 loading methods, each one level deeper:
+    - per_task
+        - per_model
+            - per_query
+                - per_sample
     """
     logdir: Path
-    output_unit: Unit
     progress_bar: bool
     tasks: List[str]  # Not optional because we are opinionated here.
 
@@ -52,14 +64,9 @@ class LogLoader():
         self.progress_bar = progress_bar
         self.logdir = Path(logdir)
 
-        self.output_unit = 'results-file'
         self.tasks = PaperTasks.full()
         for task in LogIssues.with_issues():
             self.tasks.remove(task)
-
-    def with_output_unit(self, unit: Unit) -> LogLoader:
-        self.output_unit = unit
-        return self
 
     def with_tasks(self, tasklist: Union[
             Literal['paper-full'],
@@ -108,24 +115,42 @@ class LogLoader():
 
         return self
 
-    def load(self):
-        """
-        Returns an iterator over the tasks/queries/samples filtered by task/model/shots.
-        Order/nesting is:
-        - task
-            - model
-                - query
-                    - sample
-        """
-        # Iterate over all tasks we care about.
-        for task in tqdm(self.tasks, disable=not self.progress_bar):
-            logfiles = (self.logdir / task).glob('*.json')
+    def load_per_task(self) -> Iterator[TaskLog]:
+        for logs in self._nested_results_generator():
+            task: TaskLog = {}
+            for model_id, log in logs:
+                log = self._filter_queries(log)
+                task[model_id] = log
+            yield task
 
-            # Collection of results all models for when output_type is 'task'.
-            results: TaskLogs = {}
+    def load_per_model(self) -> Iterator[bb.ResultsFileData]:
+        for logs in self._nested_results_generator():
+            for _, log in logs:
+                log = self._filter_queries(log)
+                yield log
+
+    def load_per_query(self) -> Iterator[bb.QueryType]:
+        for logs in self._nested_results_generator():
+            for _, log in logs:
+                for query in (log.queries or []):
+                    if self._include_query(query):
+                        yield query
+
+    def load_per_sample(self) -> Iterator[bb.SampleType]:
+        for logs in self._nested_results_generator():
+            for _, log in logs:
+                for query in (log.queries or []):
+                    if self._include_query(query):
+                        for sample in query.samples:
+                            yield sample
+
+    def _nested_results_generator(self) -> Iterator[Iterator[Tuple[ModelId, bb.ResultsFileData]]]:
+        def __nested_generator(path) -> Iterator[Tuple[ModelId, bb.ResultsFileData]]:
 
             # Iterate over all models we care about.
+            logfiles = (self.logdir / task).glob('*.json')
             for path in logfiles:
+
                 # Filter out models we don't care about.
                 model_family, model_size = self._extract_model_from_path(path)
                 if self.model_families is not None and model_family not in self.model_families:
@@ -143,42 +168,15 @@ class LogLoader():
                         print(f"Failed to parse for task {task} at {path}")
                         raise e
 
-                    # Delegate yielding to specialised handlers
-                    if self.output_unit == 'results-file':
-                        yield from self._yield_for_model(logs)
-                    if self.output_unit == 'query':
-                        yield from self._yield_for_query(logs)
-                    if self.output_unit == 'sample':
-                        yield from self._yield_for_sample(logs)
-                    if self.output_unit == 'task':
-                        results[(model_family, model_size)] = logs
-                        continue
+                    yield ((model_family, model_size), logs)
 
-            if self.output_unit == 'task':
-                yield from self._yield_for_task(results)
+        # Iterate over all tasks we care about.
+        for task in tqdm(self.tasks, disable=not self.progress_bar):
+            yield __nested_generator(task)
 
-    def _yield_for_task(self, results: TaskLogs) -> Iterator[TaskLogs]:
-        for key, logs in results.items():
-            results[key] = next(self._yield_for_model(logs))
-        yield results
-
-    def _yield_for_model(self, results: bb.ResultsFileData) -> Iterator[bb.ResultsFileData]:
-        if results.queries is not None:
-            results.queries = [q for q in results.queries if self._include_query(q)]
-        yield results
-
-    def _yield_for_query(self, results: bb.ResultsFileData) -> Iterator[bb.QueryType]:
-        assert results.queries is not None
-        for query in results.queries:
-            if self._include_query(query):
-                yield query
-
-    def _yield_for_sample(self, results: bb.ResultsFileData) -> Iterator[bb.SampleType]:
-        assert results.queries is not None
-        for query in results.queries:
-            if self._include_query(query):
-                for sample in query.samples:
-                    yield sample
+    def _filter_queries(self, results: bb.ResultsFileData) -> bb.ResultsFileData:
+        results.queries = [q for q in (results.queries or []) if self._include_query(q)]
+        return results
 
     def _include_query(self, query: bb.QueryType) -> bool:
         include = True
@@ -209,10 +207,10 @@ class LogIssues():
         Returns a list of all tasks with some issues and might need to be avoided
         unless special care is taken.
         """
-        return LogIssues.with_different_samples_model_wise() + LogIssues.without_target()
+        return LogIssues.with_different_samples_modelwise() + LogIssues.without_target()
 
     @staticmethod
-    def with_different_samples_model_wise():
+    def with_different_samples_modelwise():
         """
         Returns a list of tasks where the log files have different samples
         across different models.
