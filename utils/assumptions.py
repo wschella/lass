@@ -9,13 +9,14 @@ Test assumptions about the BIG-bench evaluation logs.
 - Are queries in the same order?
 """
 from typing import *
+from pathlib import Path
 from collections import defaultdict
 from bigbench.api.results import QueryType, ResultsFileData
 import bigbench.api.results as bb
 
 from tqdm import tqdm
 
-from lass.log_handling import LogLoader, TaskLogs
+from lass.log_handling import LogLoader, TaskLog
 
 
 def test_whether_samples_in_same_order_model_wise():
@@ -25,14 +26,13 @@ def test_whether_samples_in_same_order_model_wise():
     """
 
     loader = (LogLoader("./artifacts/logs")
-              .with_tasks('paper-full')
-              .with_output_unit('task'))
+              .with_tasks('paper-full'))
 
     faulty: Dict[str, List[Tuple[str, str]]] = defaultdict(list)
 
     print("Testing whether all samples are in the same order model-wise...")
-    for unit in tqdm(loader.load(), total=len(loader.tasks)):
-        task: TaskLogs = cast(TaskLogs, unit)
+    for unit in tqdm(loader.load_per_task(), total=len(loader.tasks)):
+        task: TaskLog = cast(TaskLog, unit)
         reference = list(task.values())[0]
         task_name = reference.task.task_name
         assert reference.queries, task_name
@@ -81,16 +81,14 @@ def test_whether_samples_in_same_order_shot_wise():
     """
 
     loader = (LogLoader("./artifacts/logs")
-              .with_tasks('paper-full')
-              #   .with_tasks(['social_iqa'])
-              .with_output_unit('results-file'))
+              .with_tasks('paper-full'))
 
     faulty: Dict[str, List[Tuple[str, str]]] = defaultdict(list)
     previous_task_name = loader.tasks[0]
 
     print("Testing whether all samples are in the same order shot-wise...")
     pbar = tqdm(total=len(loader.tasks))
-    for unit in loader.load():
+    for unit in loader.load_per_model():
         # Set up
         log: ResultsFileData = cast(ResultsFileData, unit)
         task_name = log.task.task_name
@@ -194,8 +192,47 @@ def test_is_same_instance_2():
     assert is_same_instance(input, ref)
 
 
+def test_wether_all_sequences_fit_models():
+    from transformers.models.auto.tokenization_auto import AutoTokenizer
+
+    tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
+
+    def count_long(samples, length=1024):
+        n_long = 0
+        n_total = 0
+        for sample in samples:
+            sample: bb.SampleType
+            tokens = tokenizer(sample.input, return_tensors="np")
+            n_total += 1
+            if len(tokens["input_ids"][0]) > length:
+                n_long += 1
+        return (n_long, n_total)
+
+    for n_shots in list(range(4)) + [None]:  # type: ignore
+        loader = (LogLoader(logdir=Path('artifacts/logs'))
+                  .with_tasks('paper-full')
+                  .with_model_families(['BIG-G T=0'])
+                  .with_model_sizes(['128b'])
+                  .with_shots([n_shots]))
+
+        (n_long, n_total) = count_long(loader.load_per_sample())
+        print(f"{n_shots}-shot: {n_long}/{n_total} long sequences")
+
+    for n_shots in list(range(4)) + [None]:  # type: ignore
+        loader = (LogLoader(logdir=Path('artifacts/logs'))
+                  .with_tasks('paper-full')
+                  .with_model_families(['BIG-G T=0'])
+                  .with_model_sizes(['128b'])
+                  .with_shots([n_shots])
+                  .with_query_types([bb.MultipleChoiceQuery]))
+
+        (n_long, n_total) = count_long(loader.load_per_sample())
+        print(f"{n_shots}-shot MCQ: {n_long}/{n_total} long sequences")
+
+
 if __name__ == '__main__':
     # test_whether_samples_in_same_order_model_wise()
-    test_is_same_instance_1()
-    test_is_same_instance_2()
-    test_whether_samples_in_same_order_shot_wise()
+    # test_is_same_instance_1()
+    # test_is_same_instance_2()
+    # test_whether_samples_in_same_order_shot_wise()
+    test_wether_all_sequences_fit_models()
