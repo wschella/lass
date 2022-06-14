@@ -63,6 +63,8 @@ class LogLoader():
     def __init__(self, logdir: Union[Path, str], progress_bar: bool = False):
         self.progress_bar = progress_bar
         self.logdir = Path(logdir)
+        if not self.logdir.exists():
+            raise ValueError(f"Log directory {logdir} does not exist.")
 
         self.tasks = PaperTasks.full()
         for task in LogIssues.with_issues():
