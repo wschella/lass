@@ -1,7 +1,6 @@
 #! .env/bin/python
 
 import csv
-import shutil
 from pathlib import Path
 from typing import *
 
