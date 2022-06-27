@@ -59,9 +59,13 @@ def analyse(df: pd.DataFrame, include_task_names: bool = False) -> Dict[str, Any
             'n_instances_nonbinary': len(df_original) - len(df),
         },
         'metrics': {
-            'lm-acc': df['correct'].mean(),
-            'lm-auc-normalized': metrics.roc_auc_score(df['correct'], conf_normalized),
-            'lm-auc-absolute': metrics.roc_auc_score(df['correct'], conf_absolute),
+            'task-acc': df['correct'].mean(),
+            'conf-normalized': {
+                'roc_auc': metrics.roc_auc_score(df['correct'], conf_normalized),
+            },
+            'conf-absolute': {
+                'auc': metrics.roc_auc_score(df['correct'], conf_absolute),
+            }
         },
         'task_names': df['task'].unique(),
     }
