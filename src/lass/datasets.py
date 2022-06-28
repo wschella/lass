@@ -64,7 +64,7 @@ def analyse(df: pd.DataFrame, include_task_names: bool = False) -> Dict[str, Any
                 'roc_auc': metrics.roc_auc_score(df['correct'], conf_normalized),
             },
             'conf-absolute': {
-                'auc': metrics.roc_auc_score(df['correct'], conf_absolute),
+                'roc_auc': metrics.roc_auc_score(df['correct'], conf_absolute),
             }
         },
         'task_names': df['task'].unique(),
@@ -112,6 +112,8 @@ def huggingfaceify(train: pd.DataFrame, test: pd.DataFrame) -> DatasetDict:
         """
         Prepare a dataframe of BigBench samples for use with HuggingFace transformers.
         """
+        df_hf = df.copy()
+
         # Take only the columns we need, and rename them appropriately
         df_hf = df[['input', 'correct']].rename(columns={'input': 'text', 'correct': 'label'})
 

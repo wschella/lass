@@ -1,8 +1,4 @@
-artifacts/logs/*
-artifacts/assessors/*
-artifacts/models/*
-artifacts/datasets/*
-artifacts/csv-datasets/*
+artifacts/*
 !artifacts/.gitkeep
 !artifacts/logs/.gitkeep
 notebooks/test_trainer/
