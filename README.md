@@ -7,7 +7,8 @@ This repo contains the code for the experiments regarding building assessor mode
 - Since we have BIG-bench as a submodule, clone this repo with `git clone --recursive <url>`
 - Make sure Git LFS is installed.
 - `cd bigbench; git lfs install; git lfs pull`
-- Initialize Conda environment.yml
+- Initialize Conda environment.yml with `???`
+- OUTDATED FROM here on
 - `poetry install`
 - Decompress all instance data with `./scripts/decompress.sh` (UNIX only, requires `parallel` to be installed.)
 

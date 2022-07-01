@@ -5,23 +5,26 @@ description = "Assessors for language models"
 authors     = ["Wout Schellaert <wout.schellaert@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.8,<3.9"
+python = "^3.8,<3.11" # The <3.11 is for scipy ^1.8
+
 # We removed all dependencies of bigbench. In general we only need 
 # their utility classes and types, which are base python.
-big-bench    = { path = "./bigbench", develop = true }
-ipywidgets   = "^7.6.3"
-ipykernel    = "^6.0.3"
-jupyterlab   = "^3.1.1"
+big-bench = { path = "./bigbench", develop = true }
+
+ipywidgets = "^7.6.3"
+ipykernel  = "^6.0.3"
+jupyterlab = "^3.1.1"
+
 tqdm         = "^4.62.3"
 pandas       = "^1.3.3"
 scikit-learn = "^1.0.1"
 matplotlib   = "^3.4.3"
-datasets     = "^2.1.0"
-transformers = "^4.18.0"
 wandb        = "^0.12.15"
 scipy        = "^1.8.0"
 
-transformers-interpret = "^0.6.0"
+transformers = "^4.18.0"
+datasets     = "^2.1.0"
+fsspec = "^2022.5.0"
 
 [tool.poetry.dev-dependencies]
 poethepoet = "^0.14.0"
@@ -31,7 +34,6 @@ pylint     = "^2.9.6"
 autopep8   = "^1.5.7"
 pytest     = "^6.2.5"
 papermill  = "^2.3.4"
-
 
 # https://github.com/nat-n/poethepoet
 [tool.poe.tasks]

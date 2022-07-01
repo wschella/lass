@@ -9,13 +9,29 @@ channels:
 # [0] https://www.tensorflow.org/install/source#gpu
 # [1] https://pytorch.org/get-started/locally/
 dependencies:
-  - python=3.8
-  - poetry=1.1
+  - python=3.10
   - cudatoolkit=11.3
+  - poetry
+  - pip
   
-  # We manage torch here, because we can't access torch+cu113 through poetry.
-  # NOTE: This might give problems with dependencies (e.g. numpy) also being
-  # managed by poetry.
-  # https://github.com/python-poetry/poetry/issues/1391
-  - pytorch=1.11
-  - torchdata=0.3.0
+  # Maybe useful for later when this actually works.
+  # # We need the `Single Page Link Source` poetry feature to manage torch with
+  # # poetry (which is preferable). This will only be available in the currently
+  # # unreleased poetry 1.2, so we use the prerelease instead. See this for
+  # # further details https://github.com/python-poetry/poetry/issues/1391.
+  # # The prelease requires us to execute `keyring --disable` after installation
+  # # because we get following error: https://github.com/python-poetry/poetry/issues/2692
+  # - pip:
+  #    - git+https://github.com/python-poetry/poetry.git@1.2.0b2
+
+  # We manage torch and all torch-requiring dependencies here, as installing
+  # torch with GPU support (e.g. torch+cu113) through poetry is still bitch [1,2,3].
+  # This could give issues with the transitive dependencies of these packages
+  # being overriden by Poetry.
+  # [1] https://github.com/python-poetry/poetry/issues/1391
+  # [2] https://github.com/python-poetry/poetry/issues/4704
+  # [3] https://github.com/python-poetry/poetry/issues/4231
+  - pytorch=1.12
+  - torchdata=0.4.0
+  - pip:
+     - transformers-interpret==0.7.2
