@@ -14,6 +14,19 @@ from datasets.arrow_dataset import Dataset
 from lass.log_handling import LogLoader
 
 
+def to_dataframe(loader: LogLoader) -> pd.DataFrame:
+    tasks: List[bb.ResultsFileData] = list(loader.load_per_model())
+    dfs: List[pd.DataFrame] = []
+    for task in tasks:
+        for query in (task.queries or []):
+            df = pd.DataFrame(query.samples)
+            df['task'] = task.task.task_name
+            df['shots'] = query.shots
+            dfs.append(df)
+
+    return pd.concat(dfs)
+
+
 def split_task_level(
     loader: LogLoader,
     seed: int,
