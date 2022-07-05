@@ -1,0 +1,99 @@
+-----Instance split ([0] shots)
+{'metrics': {'conf-absolute': {'roc_auc': {'test': 0.49041148874490403,
+                                           'train': 0.4911758596038257}},
+             'conf-normalized': {'roc_auc': {'test': 0.5992882591021771,
+                                             'train': 0.5941288202686508}},
+             'task-acc': {'test': 0.341693929480189,
+                          'train': 0.33481636173786716}},
+ 'stats': {'n_instances': {'test': 11004, 'train': 44054},
+           'n_instances_nonbinary': {'test': 82, 'train': 291},
+           'n_tasks': {'test': 118, 'train': 118}}}
+
+-----Task split ([0] shots)
+{'metrics': {'conf-absolute': {'roc_auc': {'test': 0.5514382335446202,
+                                           'train': 0.4791575119855057}},
+             'conf-normalized': {'roc_auc': {'test': 0.5903410113824089,
+                                             'train': 0.5960625536885094}},
+             'task-acc': {'test': 0.31281994213220565,
+                          'train': 0.34074926202465705}},
+ 'stats': {'n_instances': {'test': 8986, 'train': 46072},
+           'n_instances_nonbinary': {'test': 119, 'train': 254},
+           'n_tasks': {'test': 23, 'train': 95}}}
+
+-----Task distribution shift ([0] shots)
+{'metrics': {'conf-absolute': {'roc_auc': {'test': 0.48721947856416836,
+                                           'train': 0.496735045546435}},
+             'conf-normalized': {'roc_auc': {'test': 0.4934099804955599,
+                                             'train': 0.5874931359228416}},
+             'task-acc': {'test': 0.1310840005083238,
+                          'train': 0.4182858596134283}},
+ 'stats': {'n_instances': {'test': 15738, 'train': 39320},
+           'n_instances_nonbinary': {'test': 0, 'train': 373},
+           'n_tasks': {'test': 24, 'train': 94}}}
+
+-----Instance split ([3] shots)
+{'metrics': {'conf-absolute': {'roc_auc': {'test': 0.6223237644796811,
+                                           'train': 0.6209572442340165}},
+             'conf-normalized': {'roc_auc': {'test': 0.6191880476739853,
+                                             'train': 0.6065303294798008}},
+             'task-acc': {'test': 0.3687318313953488,
+                          'train': 0.36882103400558064}},
+ 'stats': {'n_instances': {'test': 11008, 'train': 44081},
+           'n_instances_nonbinary': {'test': 78, 'train': 264},
+           'n_tasks': {'test': 118, 'train': 118}}}
+
+-----Task split ([3] shots)
+{'metrics': {'conf-absolute': {'roc_auc': {'test': 0.6642345372694248,
+                                           'train': 0.612106246963259}},
+             'conf-normalized': {'roc_auc': {'test': 0.635469089571542,
+                                             'train': 0.6041244013492464}},
+             'task-acc': {'test': 0.3303313319991105,
+                          'train': 0.3763097949886105}},
+ 'stats': {'n_instances': {'test': 8994, 'train': 46095},
+           'n_instances_nonbinary': {'test': 111, 'train': 231},
+           'n_tasks': {'test': 23, 'train': 95}}}
+
+-----Task distribution shift ([3] shots)
+{'metrics': {'conf-absolute': {'roc_auc': {'test': 0.5517473154602779,
+                                           'train': 0.6088343415115275}},
+             'conf-normalized': {'roc_auc': {'test': 0.514886099742323,
+                                             'train': 0.6072840658474131}},
+             'task-acc': {'test': 0.14976012947228484,
+                          'train': 0.4690907166296179}},
+ 'stats': {'n_instances': {'test': 17301, 'train': 37788},
+           'n_instances_nonbinary': {'test': 0, 'train': 342},
+           'n_tasks': {'test': 24, 'train': 94}}}
+
+-----Instance split ([0, 1, 2, 3] shots)
+{'metrics': {'conf-absolute': {'roc_auc': {'test': 0.5851241838156074,
+                                           'train': 0.5856793409227259}},
+             'conf-normalized': {'roc_auc': {'test': 0.6038216323565616,
+                                             'train': 0.6046581743600735}},
+             'task-acc': {'test': 0.3553246517537093,
+                          'train': 0.3575855258677442}},
+ 'stats': {'n_instances': {'test': 44078, 'train': 176204},
+           'n_instances_nonbinary': {'test': 267, 'train': 1175},
+           'n_tasks': {'test': 118, 'train': 118}}}
+
+-----Task split ([0, 1, 2, 3] shots)
+{'metrics': {'conf-absolute': {'roc_auc': {'test': 0.6220219922369651,
+                                           'train': 0.578043799158497}},
+             'conf-normalized': {'roc_auc': {'test': 0.6217446124045184,
+                                             'train': 0.6021936348361989}},
+             'task-acc': {'test': 0.3242025640312578,
+                          'train': 0.36355745077933843}},
+ 'stats': {'n_instances': {'test': 35959, 'train': 184323},
+           'n_instances_nonbinary': {'test': 461, 'train': 981},
+           'n_tasks': {'test': 23, 'train': 95}}}
+
+-----Task distribution shift ([0, 1, 2, 3] shots)
+{'metrics': {'conf-absolute': {'roc_auc': {'test': 0.5417045242418718,
+                                           'train': 0.5743617046111945}},
+             'conf-normalized': {'roc_auc': {'test': 0.5060537266707101,
+                                             'train': 0.5873119242186401}},
+             'task-acc': {'test': 0.14455829410135695,
+                          'train': 0.4608204671016196}},
+ 'stats': {'n_instances': {'test': 72220, 'train': 148062},
+           'n_instances_nonbinary': {'test': 932, 'train': 510},
+           'n_tasks': {'test': 24, 'train': 94}}}
+
