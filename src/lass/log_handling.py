@@ -36,6 +36,14 @@ ModelId = Tuple[str, str]
 # The logs for multiple models on a single task
 TaskLog = Dict[ModelId, bb.ResultsFileData]
 
+# THe different query types
+QueryType = Union[Literal['generative'], Literal['multiple_choice'], Literal['scoring']]
+QUERY_TYPES = {
+    'generative': bb.GenerativeQuery,
+    'multiple_choice': bb.MultipleChoiceQuery,
+    'scoring': bb.ScoringQuery,
+}
+
 # The multiple types of query functions
 QueryFunction = Union[Literal['cond_log_prob'], Literal['generate_text']]
 
@@ -52,27 +60,53 @@ class LogLoader():
     """
     logdir: Path
     progress_bar: bool
-    tasks: List[str]  # Not optional because we are opinionated here.
+    tasks: List[str]
 
     model_families: Optional[List[str]] = None
     model_sizes: Optional[List[str]] = None
-    query_types: Optional[List[Type[bb.QueryType]]] = None
+    query_types: Optional[List[QueryType]] = None
+    _query_types: Optional[List[bb.QueryType]] = None
     query_functions: Optional[List[QueryFunction]] = None
-    shots: Optional[List[Union[int, None]]] = None
+    shots: Optional[List[int]] = None
+    include_unknown_shots: bool = False
 
-    def __init__(self, logdir: Union[Path, str], progress_bar: bool = False):
+    def __init__(
+        self,
+        logdir: Union[Path, str],
+        tasks: Optional[Union[
+            Literal['paper-full'],
+            Literal['paper-lite'],
+            Literal['pipeline-test'],
+            List[str]
+        ]] = None,
+        model_families: Optional[List[str]] = None,
+        model_sizes: Optional[List[str]] = None,
+        query_types: Optional[List[QueryType]] = None,
+        query_function: Optional[List[QueryFunction]] = None,
+        shots: Optional[List[int]] = None,
+        include_unknown_shots: bool = False,
+        exclude_faulty_tasks: bool = True,
+        progress_bar: bool = False
+    ):
         self.progress_bar = progress_bar
         self.logdir = Path(logdir)
         if not self.logdir.exists():
             raise ValueError(f"Log directory {logdir} does not exist.")
 
-        self.tasks = PaperTasks.full()
-        for task in LogIssues.with_issues():
-            self.tasks.remove(task)
+        if tasks is None:
+            tasks = 'paper-full'
+        self.with_tasks(tasks, exclude_faulty=exclude_faulty_tasks)
+
+        self.with_model_families(model_families)
+        self.with_model_sizes(model_sizes)
+        self.with_query_function(query_function)
+        self.with_query_types(query_types)
+        self.with_shots(shots, include_unknown=include_unknown_shots)
 
     def with_tasks(self, tasklist: Union[
             Literal['paper-full'],
             Literal['paper-lite'],
+            Literal['pipeline-test'],
             List[str]],
             exclude_faulty: bool = True,
     ) -> LogLoader:
@@ -80,6 +114,8 @@ class LogLoader():
             self.tasks = PaperTasks.full()
         elif tasklist == 'paper-lite':
             self.tasks = PaperTasks.lite()
+        elif tasklist == 'pipeline-test':
+            self.tasks = PaperTasks.lite()[:10]
         elif isinstance(tasklist, list):
             self.tasks = tasklist
         else:
@@ -92,28 +128,33 @@ class LogLoader():
 
         return self
 
-    def with_model_families(self, families: List[str]) -> LogLoader:
+    def with_model_families(self, families: List[str] | None) -> LogLoader:
         self.model_families = families
         return self
 
-    def with_model_sizes(self, sizes: List[str]) -> LogLoader:
+    def with_model_sizes(self, sizes: List[str] | None) -> LogLoader:
         self.model_sizes = sizes
         return self
 
-    def with_query_types(self, query_types: List[Type[bb.QueryType]]) -> LogLoader:
+    def with_query_types(self, query_types: List[QueryType] | None) -> LogLoader:
         self.query_types = query_types
+        if query_types is not None:
+            self._query_types = [QUERY_TYPES[q] for q in query_types]
         return self
 
-    def with_query_function(self, query_function: List[QueryFunction]) -> LogLoader:
+    def with_query_function(self, query_function: List[QueryFunction] | None) -> LogLoader:
         self.query_function = query_function
         return self
 
-    def with_shots(self, shots: List[int], include_unknown: bool = False) -> LogLoader:
+    def with_shots(self, shots: List[int] | None, include_unknown: bool = False) -> LogLoader:
+        self.include_unknown_shots = include_unknown
+
+        if shots is None:
+            self.shots = shots
+            return self
+
         # Copy here to avoid mutating the caller's list and making mypy angry.
         self.shots = [s for s in shots]
-
-        if include_unknown:
-            self.shots.append(None)
 
         return self
 
@@ -183,11 +224,15 @@ class LogLoader():
     def _include_query(self, query: bb.QueryType) -> bool:
         include = True
         if self.shots is not None:
-            if query.shots not in self.shots:
+            if (query.shots is not None) and (query.shots not in self.shots):
                 include = False
 
-        if self.query_types is not None:
-            if query.__class__ not in self.query_types:
+        if self.include_unknown_shots is False:
+            if query.shots is None:
+                include = False
+
+        if self._query_types is not None:
+            if query.__class__ not in self._query_types:
                 include = False
 
         if self.query_functions is not None:
@@ -209,7 +254,10 @@ class LogIssues():
         Returns a list of all tasks with some issues and might need to be avoided
         unless special care is taken.
         """
-        return LogIssues.with_different_samples_modelwise() + LogIssues.without_target()
+        return (
+            LogIssues.with_different_samples_modelwise()
+            + LogIssues.without_target()
+        )
 
     @staticmethod
     def with_different_samples_modelwise():
@@ -226,7 +274,8 @@ class LogIssues():
         """
         Returns a list of tasks where the log files have different samples
         across different shots.
-        Note: TODO: This is preliminary, some further investigation is needed to verify.
+        Note: TODO: This is preliminary and not necessarily a problem.
+        Some further investigation is needed to verify.
         """
         return [
             "anachronisms",

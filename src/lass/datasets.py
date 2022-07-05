@@ -24,7 +24,7 @@ def to_dataframe(loader: LogLoader) -> pd.DataFrame:
             df['shots'] = query.shots
             dfs.append(df)
 
-    return pd.concat(dfs)
+    return pd.concat(dfs, ignore_index=True)
 
 
 def split_task_level(
@@ -58,7 +58,7 @@ def split_task_level(
     return df_train, df_test
 
 
-def analyse(df: pd.DataFrame, include_task_names: bool = False) -> Dict[str, Any]:
+def analyse(df: pd.DataFrame) -> Dict[str, Any]:
     df_original = df
     df = df[df['correct'].isin([0.0, 1.0])]
 
@@ -67,7 +67,7 @@ def analyse(df: pd.DataFrame, include_task_names: bool = False) -> Dict[str, Any
 
     return {
         'stats': {
-            'n_tasks': df['task'].nunique(),
+            'n_tasks': len(df['task'].unique()),
             'n_instances': len(df),
             'n_instances_nonbinary': len(df_original) - len(df),
         },
@@ -80,7 +80,6 @@ def analyse(df: pd.DataFrame, include_task_names: bool = False) -> Dict[str, Any
                 'roc_auc': metrics.roc_auc_score(df['correct'], conf_absolute),
             }
         },
-        'task_names': df['task'].unique(),
     }
 
 
@@ -111,9 +110,7 @@ def merge(a: Dict[str, Any], b: Dict[str, Any], a_name: str, b_name: str) -> Dic
 def split_instance_level(
     loader: LogLoader, seed: int, test_fraction: float
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-
-    samples: List[bb.SampleType] = list(loader.load_per_sample())
-    df = pd.DataFrame(samples)
+    df = to_dataframe(loader)
     df_train: pd.DataFrame = df.sample(
         frac=(1 - test_fraction), random_state=seed)  # type: ignore
     df_test = df.drop(df_train.index)
