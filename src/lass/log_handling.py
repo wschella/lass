@@ -36,7 +36,14 @@ ModelId = Tuple[str, str]
 # The logs for multiple models on a single task
 TaskLog = Dict[ModelId, bb.ResultsFileData]
 
-# THe different query types
+TaskList = Union[
+    Literal['paper-full'],
+    Literal['paper-lite'],
+    Literal['pipeline-test'],
+    List[str]
+]
+
+# The different query types
 QueryType = Union[Literal['generative'], Literal['multiple_choice'], Literal['scoring']]
 QUERY_TYPES = {
     'generative': bb.GenerativeQuery,
@@ -103,13 +110,7 @@ class LogLoader():
         self.with_query_types(query_types)
         self.with_shots(shots, include_unknown=include_unknown_shots)
 
-    def with_tasks(self, tasklist: Union[
-            Literal['paper-full'],
-            Literal['paper-lite'],
-            Literal['pipeline-test'],
-            List[str]],
-            exclude_faulty: bool = True,
-    ) -> LogLoader:
+    def with_tasks(self, tasklist: TaskList, exclude_faulty: bool = True) -> LogLoader:
         if tasklist == 'paper-full':
             self.tasks = PaperTasks.full()
         elif tasklist == 'paper-lite':

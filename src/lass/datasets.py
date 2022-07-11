@@ -12,14 +12,32 @@ from datasets.dataset_dict import DatasetDict
 from datasets.arrow_dataset import Dataset
 
 from lass.log_handling import LogLoader
+import lass.metrics.brier
 
 
 def to_dataframe(loader: LogLoader) -> pd.DataFrame:
+    """
+    Columns in the output dataframe:
+    - input
+    - targets
+    - scores
+    - target_values
+    - correct
+    - absolute_scores
+    - normalized_scores
+    - metrics
+    - task
+    - shots
+    - model_name
+    - model_family
+    """
     tasks: List[bb.ResultsFileData] = list(loader.load_per_model())
     dfs: List[pd.DataFrame] = []
     for task in tasks:
         for query in (task.queries or []):
             df = pd.DataFrame(query.samples)
+            df['model_name'] = task.model.model_name
+            df['model_family'] = task.model.model_family
             df['task'] = task.task.task_name
             df['shots'] = query.shots
             dfs.append(df)
@@ -28,89 +46,38 @@ def to_dataframe(loader: LogLoader) -> pd.DataFrame:
 
 
 def split_task_level(
-    loader: LogLoader,
+    df: pd.DataFrame,
     seed: int,
     test_fraction: float
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-
+    Note that test_ratio is in number of _tasks_, not instances.
     """
-    # TODO: Deal with multiple models!
-    # TODO: Note that test_ratio is in _number_ of tasks, not necessarily in instances
-    tasks: List[bb.ResultsFileData] = list(loader.load_per_model())
-
-    train_tasks, test_tasks = train_test_split(tasks, test_size=test_fraction, random_state=seed)
-
-    def to_dataframe(tasks: List[bb.ResultsFileData]) -> pd.DataFrame:
-        dfs: List[pd.DataFrame] = []
-        for task in tasks:
-            for query in (task.queries or []):
-                df = pd.DataFrame(query.samples)
-                df['task'] = task.task.task_name
-                df['shots'] = query.shots
-                dfs.append(df)
-
-        return pd.concat(dfs)
-
-    df_train = to_dataframe(train_tasks)
-    df_test = to_dataframe(test_tasks)
-
-    return df_train, df_test
+    train_tasks, test_tasks = train_test_split(
+        df['task'].unique(), test_size=test_fraction, random_state=seed)
+    train = df[df['task'].isin(train_tasks)]
+    test = df[df['task'].isin(test_tasks)]
+    return train, test
 
 
-def analyse(df: pd.DataFrame) -> Dict[str, Any]:
-    df_original = df
-    df = df[df['correct'].isin([0.0, 1.0])]
+def split_task_level_distribution_shift(
+    df: pd.DataFrame,
+    test_fraction: float
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    accs = (df
+            .groupby('task', as_index=False).agg(acc=('correct', 'mean'))  # type: ignore
+            .sort_values('acc', ascending=False))
+    n_train_tasks = int(len(accs['task']) * (1 - test_fraction))
+    train_tasks, test_tasks = np.split(accs['task'], [n_train_tasks])
 
-    conf_normalized = df.apply(lambda row: math.exp(np.max(row['normalized_scores'])), axis=1)
-    conf_absolute = df.apply(lambda row: math.exp(np.max(row['absolute_scores'])), axis=1)
-
-    return {
-        'stats': {
-            'n_tasks': len(df['task'].unique()),
-            'n_instances': len(df),
-            'n_instances_nonbinary': len(df_original) - len(df),
-        },
-        'metrics': {
-            'task-acc': df['correct'].mean(),
-            'conf-normalized': {
-                'roc_auc': metrics.roc_auc_score(df['correct'], conf_normalized),
-            },
-            'conf-absolute': {
-                'roc_auc': metrics.roc_auc_score(df['correct'], conf_absolute),
-            }
-        },
-    }
-
-
-def merge(a: Dict[str, Any], b: Dict[str, Any], a_name: str, b_name: str) -> Dict[str, Any]:
-    """
-    For each leaf in a dict returned by analyse(), merge the stats of a en b
-    into a new dict with key the name of the overal dict.
-
-    Example result:
-    {
-        'task_names': {'a': [..tasks..], 'b': [..tasks..]},
-    }
-    """
-    d: Dict[str, Any] = {}
-    for (ka, va), (kb, vb) in zip(a.items(), b.items()):
-        assert ka == kb, f"Keys of dicts don't match {ka} != {kb}"
-        assert isinstance(va, dict) == isinstance(
-            vb, dict), f"Types of  dicts don't match {va} != {vb}"
-
-        if isinstance(va, dict):
-            d[ka] = merge(va, vb, a_name, b_name)
-        else:
-            d[ka] = {a_name: va, b_name: vb}
-
-    return d
+    train = df[df['task'].isin(train_tasks)]
+    test = df[df['task'].isin(test_tasks)]
+    return train, test
 
 
 def split_instance_level(
-    loader: LogLoader, seed: int, test_fraction: float
+    df: pd.DataFrame, seed: int, test_fraction: float
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    df = to_dataframe(loader)
     df_train: pd.DataFrame = df.sample(
         frac=(1 - test_fraction), random_state=seed)  # type: ignore
     df_test = df.drop(df_train.index)
@@ -141,3 +108,62 @@ def huggingfaceify(train: pd.DataFrame, test: pd.DataFrame) -> DatasetDict:
     ds['train'] = Dataset.from_pandas(hf_train, split=Split.TRAIN, preserve_index=False)
     ds['test'] = Dataset.from_pandas(hf_test, split=Split.TEST, preserve_index=False)
     return ds
+
+
+def analyse(df: pd.DataFrame) -> Dict[str, Any]:
+    df_original = df
+    df = df[df['correct'].isin([0.0, 1.0])]
+
+    conf_normalized = df.apply(lambda row: math.exp(np.max(row['normalized_scores'])), axis=1)
+    conf_absolute = df.apply(lambda row: math.exp(np.max(row['absolute_scores'])), axis=1)
+
+    def bs(target, confs):
+        total, mcb, dsc, unc = lass.metrics.brier.brier_score(target, confs)
+        return {"bs": total, "bs_mcb": mcb, "bs_dcr": dsc, "bs_unc": unc}
+
+    return {
+        'stats': {
+            'n_tasks': len(df['task'].unique()),
+            'n_instances': len(df),
+            'n_instances_nonbinary': len(df_original) - len(df),
+        },
+        'metrics': {
+            'task-acc': df['correct'].mean(),
+            'conf-normalized': {
+                'acc': metrics.accuracy_score(df['correct'], conf_normalized > 0.5),
+                'balanced_acc': metrics.balanced_accuracy_score(df['correct'], conf_normalized > 0.5),
+                'roc_auc': metrics.roc_auc_score(df['correct'], conf_normalized),
+                **bs(df['correct'], conf_normalized)
+            },
+            'conf-absolute': {
+                'acc': metrics.accuracy_score(df['correct'], conf_absolute > 0.5),
+                'balanced_acc': metrics.balanced_accuracy_score(df['correct'], conf_absolute > 0.5),
+                'roc_auc': metrics.roc_auc_score(df['correct'], conf_absolute),
+                **bs(df['correct'], conf_absolute)
+            },
+        },
+    }
+
+
+def merge(a: Dict[str, Any], b: Dict[str, Any], a_name: str, b_name: str) -> Dict[str, Any]:
+    """
+    For each leaf in a dict returned by analyse(), merge the stats of a en b
+    into a new dict with key the name of the overal dict.
+
+    Example result:
+    {
+        'task_names': {'a': [..tasks..], 'b': [..tasks..]},
+    }
+    """
+    d: Dict[str, Any] = {}
+    for (ka, va), (kb, vb) in zip(a.items(), b.items()):
+        assert ka == kb, f"Keys of dicts don't match {ka} != {kb}"
+        assert isinstance(va, dict) == isinstance(
+            vb, dict), f"Types of  dicts don't match {va} != {vb}"
+
+        if isinstance(va, dict):
+            d[ka] = merge(va, vb, a_name, b_name)
+        else:
+            d[ka] = {a_name: va, b_name: vb}
+
+    return d

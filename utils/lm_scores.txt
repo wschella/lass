@@ -1,3 +1,4 @@
+------------------ Population: BIG-G T=0 128b
 -----Instance split ([0] shots)
 {'metrics': {'conf-absolute': {'roc_auc': {'test': 0.49041148874490403,
                                            'train': 0.4911758596038257}},
@@ -97,3 +98,14 @@
            'n_instances_nonbinary': {'test': 932, 'train': 510},
            'n_tasks': {'test': 24, 'train': 94}}}
 
+------------------ Population: BIG-G T=0 all sizes
+-----Task split ([0] shots)
+{'metrics': {'conf-absolute': {'roc_auc': {'test': 0.42618493135238317,
+                                           'train': 0.4867908847081222}},
+             'conf-normalized': {'roc_auc': {'test': 0.5736185227341648,
+                                             'train': 0.6233962086683689}},
+             'task-acc': {'test': 0.25146061339885034,
+                          'train': 0.33619231207196654}},
+ 'stats': {'n_instances': {'test': 170134, 'train': 491784},
+           'n_instances_nonbinary': {'test': 3062, 'train': 192},
+           'n_tasks': {'test': 24, 'train': 94}}}

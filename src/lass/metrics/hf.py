@@ -4,7 +4,9 @@ from datasets.load import load_metric
 import numpy as np
 import scipy.special as sc_special
 import sklearn.metrics as sk_metrics
+import wandb.plot
 
+import lass.metrics.brier
 
 accuracy_ = load_metric("accuracy")
 accuracy = lambda predictions, references, confs: \
@@ -26,12 +28,31 @@ roc_auc_ = load_metric("roc_auc")
 roc_auc = lambda predictions, references, confs: \
     roc_auc_.compute(prediction_scores=confs, references=references)
 
-brier_score = lambda predictions, references, confs: \
-    {"brier_score": sk_metrics.brier_score_loss(references, confs)}
+balanced_accuracy = lambda predictions, references, confs: \
+    {"balanced_accuracy": sk_metrics.balanced_accuracy_score(references, predictions)}
+
+
+def brier_score(predictions, references, confs):
+    total, mcb, dsc, unc = lass.metrics.brier.brier_score(references, confs)
+    return {
+        "bs": total,
+        "bs_mcb": mcb,
+        "bs_dsc": dsc,
+        "bs_unc": unc,
+    }
+
+
+def wandb_conf_matrix(predictions, references, confs):
+    class_probs = np.c_[confs, 1 - confs]
+    cm = wandb.plot.confusion_matrix(class_probs, references, class_names=["0", "1"])
+    return {"wandb_conf_matrix": cm}
+
 
 METRICS = {
     "accuracy": accuracy, "precision": precision,
-    "recall": recall, "f1": f1, "roc_auc": roc_auc, "brier_score": brier_score
+    "recall": recall, "f1": f1, "roc_auc": roc_auc,
+    "brier_score": brier_score, "balanced_accuracy": balanced_accuracy,
+    "wandb_conf_matrix": wandb_conf_matrix,
 }
 
 
