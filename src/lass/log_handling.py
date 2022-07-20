@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import *
 from pathlib import Path
+from dataclasses import dataclass, asdict
 import json
 
 from tqdm import tqdm
@@ -53,6 +54,25 @@ QUERY_TYPES = {
 
 # The multiple types of query functions
 QueryFunction = Union[Literal['cond_log_prob'], Literal['generate_text']]
+
+
+@dataclass
+class LoaderArgs():
+    logdir: Union[Path, str]
+    tasks: Optional[Union[
+        Literal['paper-full'],
+        Literal['paper-lite'],
+        Literal['pipeline-test'],
+        List[str]
+    ]] = None
+    model_families: Optional[List[str]] = None
+    model_sizes: Optional[List[str]] = None
+    query_types: Optional[List[QueryType]] = None
+    query_function: Optional[List[QueryFunction]] = None
+    shots: Optional[List[int]] = None
+    include_unknown_shots: bool = False
+    exclude_faulty_tasks: bool = True
+    progress_bar: bool = False
 
 
 class LogLoader():
@@ -109,6 +129,10 @@ class LogLoader():
         self.with_query_function(query_function)
         self.with_query_types(query_types)
         self.with_shots(shots, include_unknown=include_unknown_shots)
+
+    @staticmethod
+    def from_args(args: LoaderArgs) -> LogLoader:
+        return LogLoader(**asdict(args))  # type: ignore
 
     def with_tasks(self, tasklist: TaskList, exclude_faulty: bool = True) -> LogLoader:
         if tasklist == 'paper-full':
@@ -271,6 +295,16 @@ class LogIssues():
         ]
 
     @staticmethod
+    def with_faulty_targets():
+        """
+        Returns a list of tasks where the targets are faulty, causing errors
+        in the scoring.
+        """
+        return [
+            "arithmetic",  # different amount of queries
+        ]
+
+    @staticmethod
     def with_different_samples_shotwise():
         """
         Returns a list of tasks where the log files have different samples
@@ -375,6 +409,7 @@ class LogIssues():
         """
         Returns a list of tasks where the log files have no target included in
         the samples, causing parsing errors.
+        TODO: Are these just the programmatic tasks?
         """
         return [
             "abstraction_and_reasoning_corpus",

@@ -12,29 +12,18 @@ import pandas as pd
 from transformers.models.auto.modeling_auto import AutoModelForSequenceClassification
 from transformers.trainer import Trainer
 from transformers.training_args import TrainingArguments
-from transformers.models.auto.tokenization_auto import AutoTokenizer
+from datasets.dataset_dict import DatasetDict
+from torch.utils.data import Dataset
 
 import lass.datasets
 import lass.metrics
-from lass.datasets import analyse, merge
-from lass.log_handling import LogLoader, QueryType, QueryFunction, TaskList
-
-
-@dataclass
-class DataArgs():
-    logdir: Union[str, Path]
-    tasks: TaskList
-    model_families: Optional[List[str]] = None
-    model_sizes: Optional[List[str]] = None
-    shots: Optional[List[int]] = None
-    query_types: Optional[List[QueryType]] = None
-    query_functions: Optional[List[QueryFunction]] = None
-    exclude_faulty_tasks: bool = True
-    include_unknown_shots: bool = False
+import lass.pipeline
+from lass.metrics.baseline import analyse, merge
+from lass.log_handling import LogLoader, LoaderArgs
 
 
 def train(
-    data_args: DataArgs,
+    data_args: LoaderArgs,
     split: Union[Literal['instance'], Literal['task'], Literal['task_DS']],
     model_name: str,
     batch_size: int,
@@ -48,6 +37,8 @@ def train(
     gradient_accumulation_steps: int = 1,
     use_wandb: bool = True,
     is_test_run: bool = False,
+    include_model_in_input: bool = True,
+    include_n_targets_in_input: bool = True,
     extra_training_args: Dict[str, Any] = {},
     output_dir: Optional[Union[Path, str]] = None
 ):
@@ -64,35 +55,24 @@ def train(
         print(f"Tasks: {data_args.tasks}\n n_epochs: {n_epochs}")
 
     logging.info("Starting data loading")
-    loader = LogLoader(
-        logdir=data_args.logdir,
-        tasks=data_args.tasks,
-        model_families=data_args.model_families,
-        model_sizes=data_args.model_sizes,
-        shots=data_args.shots,
-        query_types=data_args.query_types,
-        exclude_faulty_tasks=data_args.exclude_faulty_tasks,
-        include_unknown_shots=data_args.include_unknown_shots
-    )
+    loader = LogLoader.from_args(data_args)
     data = lass.datasets.to_dataframe(loader)
+    data = lass.pipeline.augment(data)
     logging.info("Loaded data.")
 
-    # Population related data wrangling
+    # Prepending of extra info for assessor to input
     uses_pop_data = (
         len(data_args.model_families or []) != 1 or
         len(data_args.model_sizes or []) != 1)
-    if uses_pop_data:
-        # First population approach: just add the model name prepended to the text
-        prepender = lambda r: f"{r['model_family']} {r['model_name']}. {r['input']}"
-        data['input'] = data.apply(prepender, axis=1)
 
-    # Split into train and test
-    if split == 'instance':
-        train, test = lass.datasets.split_instance_level(data, seed, test_fraction)
-    elif split == 'task':
-        train, test = lass.datasets.split_task_level(data, seed, test_fraction)
-    elif split == 'task_DS':
-        train, test = lass.datasets.split_task_level_distribution_shift(data, seed)
+    data = lass.pipeline.prepend_extra_features(
+        data,
+        include_model=include_model_in_input,
+        include_n_targets=include_n_targets_in_input)
+
+    # TODO: We should binarize before the split (before augmentation)
+    train, test = lass.datasets.split(split, data, test_fraction=test_fraction, seed=seed)
+    train, test = lass.pipeline.binarize(train), lass.pipeline.binarize(test)
 
     # Sometimes we just want a little smaller datasets for speed
     if train_max_instances is not None and len(train) > train_max_instances:
@@ -107,30 +87,17 @@ def train(
     pprint(stats)
     print(train.head(1))
 
-    # Huggingfaceify
-    dataset = lass.datasets.huggingfaceify(train, test)
+    dataset = lass.datasets.huggingfaceify_splits(train, test)
     print(dataset['train'][0])
 
     # Tokenize dataset
     logging.info("Starting tokenization")
     os.environ['TOKENIZERS_PARALLELISM'] = "true"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    if model_name == "gpt2":
-        tokenizer.pad_token = tokenizer.eos_token
+    tokenized_datasets: DatasetDict = lass.pipeline.tokenize(
+        dataset, model_name, max_sequence_length)
 
-    def tokenize_function(examples):
-        return tokenizer(
-            examples["text"],
-            padding="max_length",
-            truncation=True,
-            max_length=max_sequence_length,
-            return_tensors="np"
-        )
-    tokenized_datasets = dataset.map(tokenize_function, batched=True)
-
-    train_dataset = tokenized_datasets["train"].shuffle(seed=42)  # .select(range(50))
-    eval_dataset = tokenized_datasets["test"].shuffle(seed=42)  # .select(range(50))
-    len(train_dataset), len(eval_dataset)
+    train_dataset = tokenized_datasets["train"].shuffle(seed=seed)
+    eval_dataset = tokenized_datasets["test"]
 
     # Setup tagging and paths
     model_name_short = model_name_short or model_name
@@ -166,6 +133,8 @@ def train(
         wandb.config.seed = seed
         wandb.config.is_test_run = is_test_run
         wandb.config.stats = stats
+        wandb.config.include_model_in_input = include_model_in_input
+        wandb.config.include_n_targets_in_input = include_n_targets_in_input
         wandb.config.data = {
             'query_types': ",".join(data_args.query_types or []),
             'tasks': data_args.tasks,
@@ -201,7 +170,7 @@ def train(
         "roc_auc",
         "brier_score",
         "balanced_accuracy",
-    ])  # + ["wandb_conf_matrix"] if use_wandb else [])
+    ])
 
     trainer = Trainer(
         model=model,

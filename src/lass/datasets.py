@@ -1,10 +1,8 @@
 from typing import *
-import math
 
-import bigbench.api.results as bb
 from sklearn.model_selection import train_test_split
+import bigbench.api.results as bb
 import pandas as pd
-from sklearn import metrics
 import numpy as np
 
 from datasets.splits import Split
@@ -12,7 +10,7 @@ from datasets.dataset_dict import DatasetDict
 from datasets.arrow_dataset import Dataset
 
 from lass.log_handling import LogLoader
-import lass.metrics.brier
+import lass.pipeline
 
 
 def to_dataframe(loader: LogLoader) -> pd.DataFrame:
@@ -43,6 +41,31 @@ def to_dataframe(loader: LogLoader) -> pd.DataFrame:
             dfs.append(df)
 
     return pd.concat(dfs, ignore_index=True)
+
+
+SplitType = Literal['instance', 'task', 'task_DS']
+
+
+def split(
+    split: SplitType,
+    df: pd.DataFrame,
+    test_fraction: float,
+    seed: int
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Split a dataset into train and test, with multiple split types possible,
+    e.g. at a task level or instance level.
+    """
+    if split == 'instance':
+        train, test = split_instance_level(df, seed, test_fraction)
+    elif split == 'task':
+        train, test = split_task_level(df, seed, test_fraction)
+    elif split == 'task_DS':
+        train, test = split_task_level_distribution_shift(df, seed)
+    else:
+        raise ValueError(f'Unknown split {split}')
+
+    return train, test
 
 
 def split_task_level(
@@ -78,92 +101,16 @@ def split_task_level_distribution_shift(
 def split_instance_level(
     df: pd.DataFrame, seed: int, test_fraction: float
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    df_train: pd.DataFrame = df.sample(
-        frac=(1 - test_fraction), random_state=seed)  # type: ignore
-    df_test = df.drop(df_train.index)
-    return df_train, df_test
+    train = df.groupby('task').sample(frac=(1 - test_fraction), random_state=seed)
+    test = df.drop(train.index)
+    return train, test
 
 
-def huggingfaceify(train: pd.DataFrame, test: pd.DataFrame) -> DatasetDict:
-    def huggingfaceify_(df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Prepare a dataframe of BigBench samples for use with HuggingFace transformers.
-        """
-        df_hf = df.copy()
-
-        # Take only the columns we need, and rename them appropriately
-        df_hf = df[['input', 'correct']].rename(columns={'input': 'text', 'correct': 'label'})
-
-        # Drop all samples that do not have binary correctness
-        df_hf = df_hf[df_hf['label'].isin([0.0, 1.0])]
-
-        # and convert the labels to ints afterwards
-        df_hf[['label']] = df_hf[['label']].astype(int)
-        return df_hf
-
-    hf_train = huggingfaceify_(train)
-    hf_test = huggingfaceify_(test)
+def huggingfaceify_splits(train: pd.DataFrame, test: pd.DataFrame) -> DatasetDict:
+    hf_train = lass.pipeline.huggingfaceify(train)
+    hf_test = lass.pipeline.huggingfaceify(test)
 
     ds = DatasetDict()
     ds['train'] = Dataset.from_pandas(hf_train, split=Split.TRAIN, preserve_index=False)
     ds['test'] = Dataset.from_pandas(hf_test, split=Split.TEST, preserve_index=False)
     return ds
-
-
-def analyse(df: pd.DataFrame) -> Dict[str, Any]:
-    df_original = df
-    df = df[df['correct'].isin([0.0, 1.0])]
-
-    conf_normalized = df.apply(lambda row: math.exp(np.max(row['normalized_scores'])), axis=1)
-    conf_absolute = df.apply(lambda row: math.exp(np.max(row['absolute_scores'])), axis=1)
-
-    def bs(target, confs):
-        total, mcb, dsc, unc = lass.metrics.brier.brier_score(target, confs)
-        return {"bs": total, "bs_mcb": mcb, "bs_dcr": dsc, "bs_unc": unc}
-
-    return {
-        'stats': {
-            'n_tasks': len(df['task'].unique()),
-            'n_instances': len(df),
-            'n_instances_nonbinary': len(df_original) - len(df),
-        },
-        'metrics': {
-            'task-acc': df['correct'].mean(),
-            'conf-normalized': {
-                'acc': metrics.accuracy_score(df['correct'], conf_normalized > 0.5),
-                'balanced_acc': metrics.balanced_accuracy_score(df['correct'], conf_normalized > 0.5),
-                'roc_auc': metrics.roc_auc_score(df['correct'], conf_normalized),
-                **bs(df['correct'], conf_normalized)
-            },
-            'conf-absolute': {
-                'acc': metrics.accuracy_score(df['correct'], conf_absolute > 0.5),
-                'balanced_acc': metrics.balanced_accuracy_score(df['correct'], conf_absolute > 0.5),
-                'roc_auc': metrics.roc_auc_score(df['correct'], conf_absolute),
-                **bs(df['correct'], conf_absolute)
-            },
-        },
-    }
-
-
-def merge(a: Dict[str, Any], b: Dict[str, Any], a_name: str, b_name: str) -> Dict[str, Any]:
-    """
-    For each leaf in a dict returned by analyse(), merge the stats of a en b
-    into a new dict with key the name of the overal dict.
-
-    Example result:
-    {
-        'task_names': {'a': [..tasks..], 'b': [..tasks..]},
-    }
-    """
-    d: Dict[str, Any] = {}
-    for (ka, va), (kb, vb) in zip(a.items(), b.items()):
-        assert ka == kb, f"Keys of dicts don't match {ka} != {kb}"
-        assert isinstance(va, dict) == isinstance(
-            vb, dict), f"Types of  dicts don't match {va} != {vb}"
-
-        if isinstance(va, dict):
-            d[ka] = merge(va, vb, a_name, b_name)
-        else:
-            d[ka] = {a_name: va, b_name: vb}
-
-    return d
