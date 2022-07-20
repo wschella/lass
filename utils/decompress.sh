@@ -1,3 +1,5 @@
+#! /bin/bash
+
 # lrzuntar -p 1 -d BIG-bench/bigbench/benchmark_tasks/abstract_narrative_understanding/results/full-logs_BIG-G_BIG-G-sparse.tar.lrz -f -O tmp/
 decompress() {
   path=$1
@@ -13,4 +15,4 @@ parallel \
   --lb        `# Output on line basis` \
   --progress  `# Display progress ` \
   decompress \
-  ::: $(ls BIG-bench/bigbench/benchmark_tasks/**/results/full-logs**)
+  ::: $(ls bigbench/bigbench/benchmark_tasks/**/results/full-logs**)
