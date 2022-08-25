@@ -1,10 +1,14 @@
 from typing import *
+from collections import ChainMap
 
-from datasets.load import load_metric
 import numpy as np
+import pandas as pd
 import scipy.special as sc_special
 import sklearn.metrics as sk_metrics
 import wandb.plot
+
+from datasets.load import load_metric
+from transformers.trainer_callback import TrainerCallback
 
 import lass.metrics.brier
 
@@ -56,6 +60,17 @@ METRICS = {
 }
 
 
+def get_baseline_metrics(labels, metrics: list, baseline: pd.Series, prefix: str = ""):
+    metrics = [METRICS[metric] for metric in metrics]
+    scores = {}
+    prefixer = lambda d: {f"{prefix}{k}": v for k, v in d.items()}
+    for metric in metrics:
+        score = metric(baseline > 0.5, labels, baseline.values)
+        assert score is not None
+        scores.update(prefixer(score))
+    return lambda eval_pred: scores
+
+
 def get_metric_computer(metrics: list):
     metrics = [METRICS[metric] for metric in metrics]
 
@@ -73,3 +88,7 @@ def get_metric_computer(metrics: list):
         return scores
 
     return compute_metrics
+
+
+def join_metrics(*computers):
+    return lambda eval_pred: dict(ChainMap(*[computer(eval_pred) for computer in computers]))

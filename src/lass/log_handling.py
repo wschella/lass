@@ -280,9 +280,31 @@ class LogIssues():
         unless special care is taken.
         """
         return (
-            LogIssues.with_different_samples_modelwise()
-            + LogIssues.without_target()
+            LogIssues.with_different_samples_modelwise() +
+            LogIssues.without_target() +
+            LogIssues.with_unrecoverable_faulty_scores()
         )
+
+    @staticmethod
+    def with_faulty_targets():
+        """
+        Returns a list of tasks where the targets are faulty, causing errors
+        in the scoring.
+        For arithmetic, this is fixable, as the correct instances are also present.
+        """
+        return [
+            "arithmetic",  # only a single target https://github.com/google/BIG-bench/issues/869
+        ]
+
+    @staticmethod
+    def with_unrecoverable_faulty_scores():
+        """
+        Returns a list of tasks where the scoring in the logs has unrecoverable issues.
+        """
+        return [
+            # Everything is zero due to a bug. Maybe https://github.com/google/BIG-bench/pull/758?
+            "context_definition_alignment"
+        ]
 
     @staticmethod
     def with_different_samples_modelwise():
@@ -292,16 +314,6 @@ class LogIssues():
         """
         return [
             "periodic_elements",  # different amount of queries
-        ]
-
-    @staticmethod
-    def with_faulty_targets():
-        """
-        Returns a list of tasks where the targets are faulty, causing errors
-        in the scoring.
-        """
-        return [
-            "arithmetic",  # different amount of queries
         ]
 
     @staticmethod

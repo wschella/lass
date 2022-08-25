@@ -8,6 +8,14 @@ import sklearn.metrics as sk_metrics
 import lass.metrics.brier
 
 
+def baseline(df: pd.DataFrame) -> pd.Series:
+    """
+    Compute a baseline prediction that simply predicts the score distribution, 
+    but disaggregated by task and model.
+    """
+    return df.groupby(['model_family', 'model_name', 'task'])['correct'].transform('mean')
+
+
 def analyse(df: pd.DataFrame) -> Dict[str, Any]:
     df_original = df
     df = df[df['correct'].isin([0.0, 1.0])]

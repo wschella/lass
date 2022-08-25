@@ -5,7 +5,7 @@ import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 
-from lass.train import train, DataArgs
+from lass.train import train, LoaderArgs
 # autopep8: on
 
 
@@ -16,29 +16,31 @@ def main():
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     train(
-        data_args=DataArgs(
+        data_args=LoaderArgs(
             logdir="artifacts/logs",
-            tasks=["hyperbaton"],
+            tasks="paper-full",
             model_families=["BIG-G T=0"],
             model_sizes=["128b"],
             shots=[0],
             query_types=["multiple_choice"],
         ),
+        group="architecture-selection",
         split="instance",
-        # model_name="albert-base-v2",
-        # model_name_short="albert",
-        # batch_size=32,
-        model_name="microsoft/deberta-v3-base",
-        model_name_short="deberta-hyperbaton",
-        batch_size=16,
-        gradient_accumulation_steps=2,
+        model_name="albert-base-v2",
+        model_name_short="albert",
+        batch_size=32,
+        # model_name="microsoft/deberta-v3-base",
+        # model_name_short="deberta-cleaned-data",
+        # batch_size=16,
+        # gradient_accumulation_steps=2,
+        include_model_in_input=False,
+        include_n_targets_in_input=False,
         output_dir="notebooks",
         extra_training_args={
-            "eval_steps": 25,
-            "save_steps": 25,
-            "logging_steps": 25,
-            # "warmup_steps": 5000,
-            # "learning_rate": 5e-6,
+            #     "eval_steps": 2000,
+            #     "save_steps": 2000,
+            "warmup_steps": 3000,
+            "learning_rate": 2e-5,
             #     "weight_decay": 0.01,
             #     "label_smoothing_factor": 0.25,
         },

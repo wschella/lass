@@ -1,3 +1,4 @@
+from gc import callbacks
 import os
 import logging
 from typing import *
@@ -16,8 +17,9 @@ from datasets.dataset_dict import DatasetDict
 from torch.utils.data import Dataset
 
 import lass.datasets
-import lass.metrics
 import lass.pipeline
+import lass.metrics
+import lass.metrics.baseline
 from lass.metrics.baseline import analyse, merge
 from lass.log_handling import LogLoader, LoaderArgs
 
@@ -27,6 +29,7 @@ def train(
     split: Union[Literal['instance'], Literal['task'], Literal['task_DS']],
     model_name: str,
     batch_size: int,
+    group: str,
     test_fraction: float = 0.2,
     test_max_instances: Optional[int] = 20000,
     train_max_instances: Optional[int] = None,
@@ -57,22 +60,18 @@ def train(
     logging.info("Starting data loading")
     loader = LogLoader.from_args(data_args)
     data = lass.datasets.to_dataframe(loader)
-    data = lass.pipeline.augment(data)
     logging.info("Loaded data.")
 
-    # Prepending of extra info for assessor to input
-    uses_pop_data = (
-        len(data_args.model_families or []) != 1 or
-        len(data_args.model_sizes or []) != 1)
+    data = lass.pipeline.binarize(data)
+    data = lass.pipeline.augment(data)
+    data = lass.pipeline.clean(data)
 
     data = lass.pipeline.prepend_extra_features(
         data,
         include_model=include_model_in_input,
         include_n_targets=include_n_targets_in_input)
 
-    # TODO: We should binarize before the split (before augmentation)
     train, test = lass.datasets.split(split, data, test_fraction=test_fraction, seed=seed)
-    train, test = lass.pipeline.binarize(train), lass.pipeline.binarize(test)
 
     # Sometimes we just want a little smaller datasets for speed
     if train_max_instances is not None and len(train) > train_max_instances:
@@ -84,8 +83,6 @@ def train(
 
     # Log some stats & examples
     stats = merge(analyse(train), analyse(test), 'train', 'test')
-    pprint(stats)
-    print(train.head(1))
 
     dataset = lass.datasets.huggingfaceify_splits(train, test)
     print(dataset['train'][0])
@@ -100,6 +97,9 @@ def train(
     eval_dataset = tokenized_datasets["test"]
 
     # Setup tagging and paths
+    uses_pop_data = (
+        len(data_args.model_families or []) != 1 or
+        len(data_args.model_sizes or []) != 1)
     model_name_short = model_name_short or model_name
     shot_str = ','.join([str(s) for s in loader.shots or []]) if data_args.shots else "all"
     bs = batch_size if gradient_accumulation_steps == 1 else f"{batch_size}*{gradient_accumulation_steps}"
@@ -118,7 +118,8 @@ def train(
         wandb.init(
             project="lass",
             dir=f"{output_dir or '.'}/wandb",
-            group=f"{split}-split{'pop-' if uses_pop_data else ''}",
+            group=group,
+            # group=group or f"{split}-split{'pop-' if uses_pop_data else ''}",
             name=name,
             mode="disabled" if is_test_run else "online",
             tags=[
@@ -149,35 +150,44 @@ def train(
     # Setup trainer
     model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
 
+    if model_name == "gpt2":
+        model.config.pad_token_id = model.config.eos_token_id
+
     training_args = TrainingArguments(
         output_dir=f"{output_dir or '.'}/{name}-{datetime.now().strftime('%m%d%H%M')}",
         optim="adamw_torch",  # type: ignore
         evaluation_strategy="steps",  # type: ignore
-        report_to="wandb" if use_wandb else "none",  # type: ignore
+        report_to="wandb" if wandb else "none",  # type: ignore
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
+        gradient_accumulation_steps=gradient_accumulation_steps,
         save_total_limit=1,
         load_best_model_at_end=True,
         num_train_epochs=n_epochs,
         **extra_training_args
     )
 
-    compute_metrics = lass.metrics.hf.get_metric_computer([
-        "accuracy",
-        "precision",
-        "recall",
-        "f1",
-        "roc_auc",
-        "brier_score",
-        "balanced_accuracy",
-    ])
+    metrics = ["accuracy", "precision", "recall", "f1",
+               "roc_auc", "brier_score", "balanced_accuracy"]
+    metrics_assessor = lass.metrics.hf.get_metric_computer(metrics)
+
+    # Add baseline metrics as well so we can merge the plots in wandb
+    labels = test['correct']
+    dist_baseline = lass.metrics.baseline.baseline(test)
+    get_baseline = lass.metrics.hf.get_baseline_metrics
+    compute_metrics_plus = lass.metrics.hf.join_metrics(
+        metrics_assessor,
+        get_baseline(labels, metrics, test['conf_normalized'], prefix="conf_normalized_"),
+        get_baseline(labels, metrics, test['conf_absolute'], prefix="conf_absolute_"),
+        get_baseline(labels, metrics, dist_baseline, prefix="conf_distribution_"),
+    )
 
     trainer = Trainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,  # type: ignore
         eval_dataset=eval_dataset,  # type: ignore
-        compute_metrics=compute_metrics,
+        compute_metrics=compute_metrics_plus,
     )
 
     trainer.train()

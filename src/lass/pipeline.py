@@ -1,3 +1,4 @@
+import logging
 from typing import *
 
 import pandas as pd
@@ -18,10 +19,22 @@ def augment(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def clean(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Clean the dataframe of samples that are not correct.
+    """
+    faulty = df[df['n_targets'] == 1].index
+    df = df.drop(faulty)  # type: ignore
+    logging.info(f"Dropped {len(faulty)} samples with faulty targets")
+    return df
+
+
 def binarize(df: pd.DataFrame) -> pd.DataFrame:
     # Drop all samples that do not have binary correctness
-    # TODO: We could also round instead of drop here
-    df = df[df['correct'].isin([0.0, 1.0])]
+    # We could also round instead of drop here
+    is_binary = df['correct'].isin([0.0, 1.0])
+    df = df[is_binary]
+    logging.info(f"Dropped {len(is_binary) - len(df)} samples with non-binary correctness")
 
     # and convert the labels to ints afterwards
     df.loc[:, 'correct'] = df['correct'].astype(int)
@@ -41,7 +54,7 @@ def prepend_extra_features(df: pd.DataFrame, include_model: bool, include_n_targ
     # Prepend extra features if needed
     if include_model:
         model_formatter = lambda r: \
-            f"FAM: {r['model_family']} SIZE:{r['model_size']} "
+            f"FAM: {r['model_family']} SIZE:{r['model_name']} "
     if include_n_targets:
         n_targets_formatter = lambda r: \
             f"N_TARGETS: {r['n_targets']} "
@@ -55,8 +68,6 @@ def huggingfaceify(df: pd.DataFrame) -> pd.DataFrame:
     """
     Prepare a dataframe of BigBench samples for use with HuggingFace transformers.
     """
-    df_hf = binarize(df.copy())
-
     # Take only the columns we need, and rename them appropriately
     df_hf = df[['input', 'correct']].rename(columns={'input': 'text', 'correct': 'label'})
     return df_hf
