@@ -40,6 +40,9 @@ def to_dataframe(loader: LogLoader) -> pd.DataFrame:
             df['shots'] = query.shots
             dfs.append(df)
 
+    if len(dfs) == 0:
+        raise ValueError(f'No data found.')
+
     return pd.concat(dfs, ignore_index=True)
 
 

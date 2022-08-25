@@ -7,6 +7,7 @@ from pprint import pprint
 
 from transformers.models.auto.modeling_auto import AutoModelForSequenceClassification
 from transformers.trainer import Trainer
+from torch.nn.modules.module import Module
 
 import lass.pipeline
 import lass.datasets
@@ -19,7 +20,7 @@ from lass.log_handling import LogLoader, LoaderArgs
 def test(
     data_args: LoaderArgs,
     split: Union[Literal['instance'], Literal['task'], Literal['task_DS']],
-    model_loc: str,
+    model_loc: Union[str, Module],  # Can be location, or the actual model
     model_name: str,
     test_fraction: float = 0.2,
     seed: int = 42,
@@ -30,7 +31,8 @@ def test(
     # model_name_short: Optional[str] = None,
     # output_dir: Optional[Union[Path, str]] = None
 ):
-    assert Path(model_loc).exists()
+    if type(model_loc) in [str, Path, bytes]:
+        assert Path(model_loc).exists() # type: ignore
 
     logging.info("Starting data loading")
     loader = LogLoader.from_args(data_args)
@@ -61,7 +63,10 @@ def test(
     os.environ['TOKENIZERS_PARALLELISM'] = "true"
     tokenized_datasets = lass.pipeline.tokenize(dataset, model_name, max_sequence_length)
 
-    model = AutoModelForSequenceClassification.from_pretrained(model_loc, num_labels=2)
+    if type(model_loc) in [str, Path, bytes]:
+        model: Module = AutoModelForSequenceClassification.from_pretrained(model_loc, num_labels=2)
+    else:
+        model: Module = model_loc # type: ignore
 
     metrics = ["accuracy", "precision", "recall", "f1",
                "roc_auc", "brier_score", "balanced_accuracy"]
