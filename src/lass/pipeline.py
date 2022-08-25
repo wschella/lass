@@ -121,7 +121,7 @@ def truncate_(input: Dataset, model_name: str, max_sequence_length: int):
             return_offsets_mapping=True,
             max_length=max_sequence_length
         )
-        # Expected share here is [batch size, sequence length (in tokens), 2]
+        # Expected shape here is [batch size, sequence length (in tokens), 2]
         # but first dimension is a list, second a list, and third a tuple
         # We take the previous to last for each offset mapping, and take the
         # end off the span tuple.
