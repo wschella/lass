@@ -7,6 +7,7 @@ from pprint import pprint
 
 from transformers.models.auto.modeling_auto import AutoModelForSequenceClassification
 from transformers.trainer import Trainer
+from transformers.training_args import TrainingArguments
 from torch.nn.modules.module import Module
 
 import lass.pipeline
@@ -32,7 +33,7 @@ def test(
     # output_dir: Optional[Union[Path, str]] = None
 ):
     if type(model_loc) in [str, Path, bytes]:
-        assert Path(model_loc).exists() # type: ignore
+        assert Path(model_loc).exists()  # type: ignore
 
     logging.info("Starting data loading")
     loader = LogLoader.from_args(data_args)
@@ -66,7 +67,7 @@ def test(
     if type(model_loc) in [str, Path, bytes]:
         model: Module = AutoModelForSequenceClassification.from_pretrained(model_loc, num_labels=2)
     else:
-        model: Module = model_loc # type: ignore
+        model: Module = model_loc  # type: ignore
 
     metrics = ["accuracy", "precision", "recall", "f1",
                "roc_auc", "brier_score", "balanced_accuracy"]
@@ -84,7 +85,8 @@ def test(
     )
 
     # Dummy Trainer for easy batched predictions
-    dummy_trainer = Trainer(model=model, compute_metrics=compute_metrics_plus)
+    dummy_args = TrainingArguments(output_dir="tmp_trainer")  # To silence warning
+    dummy_trainer = Trainer(model=model, args=dummy_args, compute_metrics=compute_metrics_plus)
 
     logits, labels, metrics = dummy_trainer.predict(tokenized_datasets['test'])  # type: ignore
 

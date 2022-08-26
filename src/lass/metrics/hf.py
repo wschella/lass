@@ -30,7 +30,14 @@ f1 = lambda predictions, references, confs: \
 
 roc_auc_ = load_metric("roc_auc")
 roc_auc = lambda predictions, references, confs: \
-    roc_auc_.compute(prediction_scores=confs, references=references)
+    (roc_auc_.compute(prediction_scores=confs, references=references)
+     # ROC AUC is not defined when there is only 1 class in references
+     if not unique_class(references) else {"roc_auc": 0})
+
+
+def unique_class(references: pd.DataFrame):
+    return len(np.unique(references)) == 1
+
 
 balanced_accuracy = lambda predictions, references, confs: \
     {"balanced_accuracy": sk_metrics.balanced_accuracy_score(references, predictions)}

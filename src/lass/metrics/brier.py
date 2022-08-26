@@ -34,7 +34,8 @@ def score_decompose(target, pred_probs, scoring_function):
     # the score should decompose as SCORE = MCB - DSC + UNC
     total_score = pred_score
 
-    assert(np.abs((total_score - mcb + dsc - unc) / total_score) < 1e-5)
+    if total_score != 0.0:  # Perfect classifier.
+        assert(np.abs((total_score - mcb + dsc - unc) / total_score) < 1e-5)
 
     return total_score, mcb, dsc, unc
 

@@ -60,7 +60,6 @@ def train(
     logging.info("Starting data loading")
     loader = LogLoader.from_args(data_args)
     data = lass.datasets.to_dataframe(loader)
-    print("test")
     logging.info("Loaded data.")
 
     data = lass.pipeline.binarize(data)
@@ -71,7 +70,6 @@ def train(
         data,
         include_model=include_model_in_input,
         include_n_targets=include_n_targets_in_input)
-
 
     train, test = lass.datasets.split(split, data, test_fraction=test_fraction, seed=seed)
 
@@ -155,20 +153,19 @@ def train(
     if model_name == "gpt2":
         model.config.pad_token_id = model.config.eos_token_id
 
-    default_args = {
+    default_args: Dict[str, Any] = {
         "output_dir": f"{output_dir or '.'}/{name}-{datetime.now().strftime('%m%d%H%M')}",
-        "optim": "adamw_torch", 
+        "optim": "adamw_torch",
         "evaluation_strategy": "steps",
-        "report_to": "wandb" if wandb else "none", 
+        "report_to": "wandb" if wandb else "none",
         "per_device_train_batch_size": batch_size,
         "per_device_eval_batch_size": batch_size,
         "gradient_accumulation_steps": gradient_accumulation_steps,
         "num_train_epochs": n_epochs,
         # This combination saves models immediately, but only keeps the best and the last.
-        "load_best_model_at_end":True, 
-        "save_total_limit":1,
+        "load_best_model_at_end": True,
+        "save_total_limit": 1,
     }
-
     training_args = TrainingArguments(**(default_args | extra_training_args))
 
     metrics = ["accuracy", "precision", "recall", "f1",

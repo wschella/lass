@@ -27,6 +27,11 @@ def analyse(df: pd.DataFrame) -> Dict[str, Any]:
         total, mcb, dsc, unc = lass.metrics.brier.brier_score(target, confs)
         return {"bs": total, "bs_mcb": mcb, "bs_dcr": dsc, "bs_unc": unc}
 
+    def roc_auc(confs):
+        if df.correct.nunique() == 1:
+            return 0
+        return sk_metrics.roc_auc_score(df.correct, confs)
+
     return {
         'stats': {
             'n_tasks': len(df['task'].unique()),
@@ -38,13 +43,13 @@ def analyse(df: pd.DataFrame) -> Dict[str, Any]:
             'conf-normalized': {
                 'acc': sk_metrics.accuracy_score(df['correct'], conf_normalized > 0.5),
                 'balanced_acc': sk_metrics.balanced_accuracy_score(df['correct'], conf_normalized > 0.5),
-                'roc_auc': sk_metrics.roc_auc_score(df['correct'], conf_normalized),
-                **bs(df['correct'], conf_normalized)
+                'roc_auc': roc_auc(conf_normalized),
+                ** bs(df['correct'], conf_normalized)
             },
             'conf-absolute': {
                 'acc': sk_metrics.accuracy_score(df['correct'], conf_absolute > 0.5),
                 'balanced_acc': sk_metrics.balanced_accuracy_score(df['correct'], conf_absolute > 0.5),
-                'roc_auc': sk_metrics.roc_auc_score(df['correct'], conf_absolute),
+                'roc_auc': roc_auc(conf_absolute),
                 **bs(df['correct'], conf_absolute)
             },
         },
