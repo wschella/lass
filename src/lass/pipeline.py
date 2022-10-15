@@ -105,7 +105,7 @@ def truncate(input: pd.Series, model_name: str, max_sequence_length: int) -> pd.
 
 def truncate_(input: Dataset, model_name: str, max_sequence_length: int):
     """
-    Encoding is a destructive process [1], so we work with offset_mapping to determine 
+    Encoding can be a destructive process [1], so we work with offset_mapping to determine 
     the character indexes of the original string mapping to the last token.
 
     [1] https://github.com/huggingface/tokenizers/issues/826#issuecomment-966082496
