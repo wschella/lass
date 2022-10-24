@@ -15,11 +15,11 @@ import lass.datasets
 import lass.metrics
 import lass.metrics.baseline
 from lass.metrics.baseline import analyse, merge
-from lass.log_handling import LogLoader, LoaderArgs
+from lass.log_handling import LogLoader, LogLoaderArgs
 
 
 def test(
-    data_args: LoaderArgs,
+    data_args: LogLoaderArgs,
     split: Union[Literal['instance'], Literal['task'], Literal['task_DS']],
     model_loc: Union[str, Module],  # Can be location, or the actual model
     model_name: str,
@@ -36,7 +36,7 @@ def test(
         assert Path(model_loc).exists()  # type: ignore
 
     logging.info("Starting data loading")
-    loader = LogLoader.from_args(data_args)
+    loader = LogLoader(data_args)
     data = lass.datasets.to_dataframe(loader)
     logging.info("Loaded data.")
 

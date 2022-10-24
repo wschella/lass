@@ -21,11 +21,11 @@ import lass.pipeline
 import lass.metrics
 import lass.metrics.baseline
 from lass.metrics.baseline import analyse, merge
-from lass.log_handling import LogLoader, LoaderArgs
+from lass.log_handling import LogLoader, LogLoaderArgs
 
 
 def train(
-    data_args: LoaderArgs,
+    data_args: LogLoaderArgs,
     split: Union[Literal['instance'], Literal['task'], Literal['task_DS']],
     model_name: str,
     batch_size: int,
@@ -58,7 +58,7 @@ def train(
         print(f"Tasks: {data_args.tasks}\n n_epochs: {n_epochs}")
 
     logging.info("Starting data loading")
-    loader = LogLoader.from_args(data_args)
+    loader = LogLoader(data_args)
     data = lass.datasets.to_dataframe(loader)
     logging.info("Loaded data.")
 

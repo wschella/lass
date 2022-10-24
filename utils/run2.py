@@ -5,7 +5,7 @@ import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 
-from lass.train import train, LoaderArgs
+from lass.train import train, LogLoaderArgs
 # autopep8: on
 
 
@@ -16,7 +16,7 @@ def main():
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     train(
-        data_args=LoaderArgs(
+        data_args=LogLoaderArgs(
             logdir="artifacts/logs",
             tasks="paper-full",
             model_families=["BIG-G T=0"],
@@ -24,15 +24,15 @@ def main():
             shots=[0],
             query_types=["multiple_choice"],
         ),
-        group="architecture-selection",
+        group="reference-models",
         split="instance",
-        model_name="albert-base-v2",
-        model_name_short="albert",
-        batch_size=32,
-        # model_name="microsoft/deberta-v3-base",
-        # model_name_short="deberta-cleaned-data",
-        # batch_size=16,
-        # gradient_accumulation_steps=2,
+        # model_name="albert-base-v2",
+        # model_name_short="albert",
+        # batch_size=32,
+        model_name="microsoft/deberta-v3-base",
+        model_name_short="deberta-reference",
+        batch_size=16,
+        gradient_accumulation_steps=2,
         include_model_in_input=False,
         include_n_targets_in_input=False,
         output_dir="notebooks",

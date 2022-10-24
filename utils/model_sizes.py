@@ -1,6 +1,6 @@
-from lass.log_handling import LogLoader
+from lass.log_handling import LogLoader, LoaderArgs
 
-loader = LogLoader(
+loader_args = LoaderArgs(
     logdir='./artifacts/logs',
     tasks=['abstract_narrative_understanding'],
     model_families=['BIG-G T=0'],
@@ -10,7 +10,8 @@ loader = LogLoader(
     include_unknown_shots=True,
     exclude_faulty_tasks=True,
 )
+loader = LogLoader(loader_args)
 
 for log in loader.load_per_model():
-    size = log.model.total_params
-    print(f"\"{log.model.model_name}\": {size}")
+    size = log.model.flop_matched_non_embedding_params
+    print(f"\"{log.model.model_name}\": {size},")
