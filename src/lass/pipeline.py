@@ -64,13 +64,13 @@ def prepend_extra_features(df: pd.DataFrame, include_model: bool, include_n_targ
     return df
 
 
-def huggingfaceify(df: pd.DataFrame) -> pd.DataFrame:
+def huggingfaceify(df: pd.DataFrame) -> Dataset:
     """
     Prepare a dataframe of BigBench samples for use with HuggingFace transformers.
     """
     # Take only the columns we need, and rename them appropriately
     df_hf = df[['input', 'correct']].rename(columns={'input': 'text', 'correct': 'label'})
-    return df_hf
+    return Dataset.from_pandas(df_hf, preserve_index=False)
 
 
 def get_tokenizer(model_name: str) -> Any:

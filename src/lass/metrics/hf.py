@@ -43,7 +43,7 @@ balanced_accuracy = lambda predictions, references, confs: \
     {"balanced_accuracy": sk_metrics.balanced_accuracy_score(references, predictions)}
 
 
-def brier_score(predictions, references, confs):
+def brier_score(predictions, references, confs) -> dict[str, Any]:
     total, mcb, dsc, unc = lass.metrics.brier.brier_score(references, confs)
     return {
         "bs": total,
@@ -53,7 +53,7 @@ def brier_score(predictions, references, confs):
     }
 
 
-def wandb_conf_matrix(predictions, references, confs):
+def wandb_conf_matrix(predictions, references, confs) -> dict[str, float]:
     class_probs = np.c_[confs, 1 - confs]
     cm = wandb.plot.confusion_matrix(class_probs, references, class_names=["0", "1"])
     return {"wandb_conf_matrix": cm}
@@ -79,14 +79,25 @@ def get_baseline_metrics(labels, metrics: list, baseline: pd.Series, prefix: str
 
 
 def get_metric_computer(metrics: list):
+    """
+    Args:
+    -----
+        metrics: list of metric names
+
+    Returns:
+    --------
+        A function that takes a batch of predictions+labels and returns
+        a dict with calculated metrics.
+    """
     metrics = [METRICS[metric] for metric in metrics]
 
-    def compute_metrics(eval_pred):
+    def compute_metrics(eval_pred) -> dict[str, float]:
         logits, labels = eval_pred
         predictions = np.argmax(logits, axis=-1)
+        # TODO: Check if multiclass thing, then return all probs instead
         confs = sc_special.softmax(logits, axis=-1)[:, -1]
 
-        scores = {}
+        scores: dict[str, float] = {}
         for metric in metrics:
             score = metric(predictions, labels, confs)
             assert score is not None

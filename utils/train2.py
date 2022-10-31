@@ -21,7 +21,7 @@ def main():
             tasks="paper-full",
             model_families=["BIG-G T=0"],
             model_sizes=["128b"],
-            shots=[0],
+            shots=[3],
             query_types=["multiple_choice"],
         ),
         group="reference-models",

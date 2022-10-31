@@ -28,6 +28,7 @@ def test(
     max_sequence_length: int = 512,
     include_model_in_input: bool = False,
     include_n_targets_in_input: bool = False,
+    per_task: bool = False,
     # is_test_run: bool = False,
     # model_name_short: Optional[str] = None,
     # output_dir: Optional[Union[Path, str]] = None
@@ -56,14 +57,6 @@ def test(
     pprint(stats)
     print(train.head(1))
 
-    dataset = lass.datasets.huggingfaceify_splits(train, test)
-    print(dataset['train'][0])
-
-    # Tokenize dataset
-    logging.info("Starting tokenization")
-    os.environ['TOKENIZERS_PARALLELISM'] = "true"
-    tokenized_datasets = lass.pipeline.tokenize(dataset, model_name, max_sequence_length)
-
     if type(model_loc) in [str, Path, bytes]:
         model: Module = AutoModelForSequenceClassification.from_pretrained(model_loc, num_labels=2)
     else:
@@ -88,7 +81,29 @@ def test(
     dummy_args = TrainingArguments(output_dir="tmp_trainer")  # To silence warning
     dummy_trainer = Trainer(model=model, args=dummy_args, compute_metrics=compute_metrics_plus)
 
-    logits, labels, metrics = dummy_trainer.predict(tokenized_datasets['test'])  # type: ignore
+    # Evaluate per task
+    if per_task:
+        for task in test.task.unique()[33:]:
+            test_task = test.loc[test.task == task]
+            test_task_hf = lass.pipeline.huggingfaceify(test_task)
+            print(test_task_hf[0])
+            test_task_hf_tokenized = lass.pipeline.tokenize(
+                test_task_hf, model_name, max_sequence_length)
+            try:
+                dummy_trainer.predict(test_task_hf_tokenized)
+            except Exception as e:
+                print(f"Error in task {task}: {e}")
+                raise e
+        return
+
+    # Tokenize dataset
+    logging.info("Starting tokenization")
+    os.environ['TOKENIZERS_PARALLELISM'] = "true"
+    test_hf = lass.pipeline.huggingfaceify(test)
+    print(test_hf[0])
+    test_hf_tokenized = lass.pipeline.tokenize(test_hf, model_name, max_sequence_length)
+
+    logits, labels, metrics = dummy_trainer.predict(test_hf_tokenized)  # type: ignore
 
     return {
         'data': data,

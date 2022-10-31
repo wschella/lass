@@ -6,7 +6,7 @@ os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
 from lass.train import train
-from lass.log_handling import LoaderArgs
+from lass.log_handling import LogLoaderArgs
 # autopep8: on
 
 
@@ -17,7 +17,7 @@ def main():
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     train(
-        data_args=LoaderArgs(
+        data_args=LogLoaderArgs(
             logdir="artifacts/logs",
             tasks="paper-full",
             model_families=["BIG-G T=0"],

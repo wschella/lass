@@ -110,10 +110,7 @@ def split_instance_level(
 
 
 def huggingfaceify_splits(train: pd.DataFrame, test: pd.DataFrame) -> DatasetDict:
-    hf_train = lass.pipeline.huggingfaceify(train)
-    hf_test = lass.pipeline.huggingfaceify(test)
-
     ds = DatasetDict()
-    ds['train'] = Dataset.from_pandas(hf_train, split=Split.TRAIN, preserve_index=False)
-    ds['test'] = Dataset.from_pandas(hf_test, split=Split.TEST, preserve_index=False)
+    ds['train'] = lass.pipeline.huggingfaceify(train)
+    ds['test'] = lass.pipeline.huggingfaceify(test)
     return ds
