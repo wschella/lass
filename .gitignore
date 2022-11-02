@@ -1,6 +1,7 @@
 artifacts/*
 !artifacts/.gitkeep
 !artifacts/logs/.gitkeep
+!artifacts/csv-results/
 notebooks/test_trainer/
 notebooks/wandb/
 wandb/
