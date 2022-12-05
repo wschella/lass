@@ -165,6 +165,7 @@ def train(
         # This combination saves models immediately, but only keeps the best and the last.
         "load_best_model_at_end": True,
         "save_total_limit": 1,
+        "seed": seed,
     }
     training_args = TrainingArguments(**(default_args | extra_training_args))
 

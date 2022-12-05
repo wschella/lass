@@ -5,7 +5,6 @@ import bigbench.api.results as bb
 import pandas as pd
 import numpy as np
 
-from datasets.splits import Split
 from datasets.dataset_dict import DatasetDict
 from datasets.arrow_dataset import Dataset
 

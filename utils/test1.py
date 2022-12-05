@@ -3,7 +3,7 @@ import logging
 # autopep8: off
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
 from lass.test import test
 from lass.log_handling import LogLoaderArgs
