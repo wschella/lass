@@ -43,7 +43,8 @@ def train(
     include_model_in_input: bool = True,
     include_n_targets_in_input: bool = True,
     extra_training_args: Dict[str, Any] = {},
-    output_dir: Optional[Union[Path, str]] = None
+    output_dir: Optional[Union[Path, str]] = None,
+    truncation_side: Union[Literal['left'], Literal['right']] = "right"
 ):
 
     if is_test_run:
@@ -91,7 +92,7 @@ def train(
     logging.info("Starting tokenization")
     os.environ['TOKENIZERS_PARALLELISM'] = "true"
     tokenized_datasets: DatasetDict = lass.pipeline.tokenize(
-        dataset, model_name, max_sequence_length)
+        dataset, model_name, max_sequence_length, truncation_side=truncation_side)
 
     train_dataset = tokenized_datasets["train"].shuffle(seed=seed)
     eval_dataset = tokenized_datasets["test"]
@@ -113,6 +114,16 @@ def train(
 
     # Setup wandb
     if use_wandb:
+        if isinstance(data_args.tasks, str):
+            wandb_tasks = str(data_args.tasks)
+        elif isinstance(data_args.tasks, list):
+            if len(data_args.tasks) > 5:
+                wandb_tasks = f"uknown-set-len-{len(data_args.tasks)}"
+            else:
+                wandb_tasks = ','.join(data_args.tasks)
+        else:
+            wandb_tasks = str(data_args.tasks)
+
         os.environ['WANDB_LOG_MODEL'] = "false"
         wandb.login()
         wandb.init(
@@ -125,7 +136,7 @@ def train(
             tags=[
                 f"split:{split}-split",
                 f"assr:{model_name_short}",
-                f"tasks:{data_args.tasks}",
+                f"tasks:{wandb_tasks}",
                 f"pop:{'yes' if uses_pop_data else 'no'}",
                 f"shots:{shot_str}",
             ]
@@ -138,7 +149,7 @@ def train(
         wandb.config.include_n_targets_in_input = include_n_targets_in_input
         wandb.config.data = {
             'query_types': ",".join(data_args.query_types or []),
-            'tasks': data_args.tasks,
+            'tasks': wandb_tasks,
             'test_fraction': test_fraction,
             'split': split,
             'shots': shot_str,

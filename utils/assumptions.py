@@ -16,7 +16,7 @@ import bigbench.api.results as bb
 
 from tqdm import tqdm
 
-from lass.log_handling import LogLoader, TaskLog
+from lass.log_handling import LogLoader, LogLoaderArgs
 
 
 def test_whether_samples_in_same_order_model_wise():
@@ -195,7 +195,7 @@ def test_is_same_instance_2():
 def test_wether_all_sequences_fit_models():
     from transformers.models.auto.tokenization_auto import AutoTokenizer
 
-    tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
+    tokenizer = AutoTokenizer.from_pretrained("microsoft/deberta-v3-large")
 
     def count_long(samples, length=1024):
         n_long = 0
@@ -208,26 +208,20 @@ def test_wether_all_sequences_fit_models():
                 n_long += 1
         return (n_long, n_total)
 
-    for n_shots in list(range(4)) + [None]:  # type: ignore
-        loader = (LogLoader(logdir=Path('artifacts/logs'))
-                  .with_tasks('paper-full')
-                  .with_model_families(['BIG-G T=0'])
-                  .with_model_sizes(['128b'])
-                  .with_shots([n_shots]))
+    for n_shots in list(range(4)):
+        args = LogLoaderArgs(
+            logdir=Path('artifacts/logs'),
+            tasks='paper-full',
+            model_families=['BIG-G T=0'],
+            query_types=["multiple_choice"],
+            model_sizes=['128b'],
+            shots=[n_shots],
+        )
+        loader = LogLoader(args)
 
         (n_long, n_total) = count_long(loader.load_per_sample())
-        print(f"{n_shots}-shot: {n_long}/{n_total} long sequences")
-
-    for n_shots in list(range(4)) + [None]:  # type: ignore
-        loader = (LogLoader(logdir=Path('artifacts/logs'))
-                  .with_tasks('paper-full')
-                  .with_model_families(['BIG-G T=0'])
-                  .with_model_sizes(['128b'])
-                  .with_shots([n_shots])
-                  .with_query_types([bb.MultipleChoiceQuery]))
-
-        (n_long, n_total) = count_long(loader.load_per_sample())
-        print(f"{n_shots}-shot MCQ: {n_long}/{n_total} long sequences")
+        percent = n_long / n_total
+        print(f"{n_shots}-shot MCQ: {n_long}/{n_total} ({percent*100:.0f}%) long sequences")
 
 
 if __name__ == '__main__':

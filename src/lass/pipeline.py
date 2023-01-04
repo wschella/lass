@@ -73,8 +73,8 @@ def huggingfaceify(df: pd.DataFrame) -> Dataset:
     return Dataset.from_pandas(df_hf, preserve_index=False)
 
 
-def get_tokenizer(model_name: str) -> Any:
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+def get_tokenizer(model_name: str, truncation_side: Union[Literal['left'], Literal['right']] = "right") -> Any:
+    tokenizer = AutoTokenizer.from_pretrained(model_name, truncation_side=truncation_side)
 
     if model_name == "gpt2":
         tokenizer.pad_token = tokenizer.eos_token
@@ -82,8 +82,8 @@ def get_tokenizer(model_name: str) -> Any:
     return tokenizer
 
 
-def tokenize(ds: Union[Dataset, DatasetDict], model_name: str, max_sequence_length) -> Any:
-    tokenizer = get_tokenizer(model_name)
+def tokenize(ds: Union[Dataset, DatasetDict], model_name: str, max_sequence_length: int, truncation_side: Union[Literal["left"], Literal["right"]] = "right") -> Any:
+    tokenizer = get_tokenizer(model_name, truncation_side=truncation_side)
 
     def tokenize_function(examples):
         return tokenizer(
