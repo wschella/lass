@@ -66,7 +66,43 @@ def test(
                "roc_auc", "brier_score", "balanced_accuracy"]
     metrics_assessor = lass.metrics.hf.get_metric_computer(metrics)
 
-    # Add baseline metrics as well so we can merge the plots in wandb
+    # Evaluate per task
+    tasks = {}
+    if per_task:
+        for task_name in test.task.unique():
+            test_task = test.loc[test.task == task_name]
+            labels = test_task['correct']
+            dist_baseline = lass.metrics.baseline.baseline(test_task)
+            get_baseline = lass.metrics.hf.get_baseline_metrics
+            compute_metrics_plus = lass.metrics.hf.join_metrics(
+                metrics_assessor,
+                get_baseline(labels, metrics,
+                             test_task['conf_normalized'], prefix="conf_normalized_"),
+                get_baseline(labels, metrics, test_task['conf_absolute'], prefix="conf_absolute_"),
+                get_baseline(labels, metrics, dist_baseline, prefix="conf_distribution_"),
+            )
+
+            dummy_args = TrainingArguments(output_dir="tmp_trainer")  # To silence warning
+            dummy_trainer = Trainer(model=model, args=dummy_args,
+                                    compute_metrics=compute_metrics_plus)
+
+            test_task_hf = lass.pipeline.huggingfaceify(test_task)
+            test_task_hf_tokenized = lass.pipeline.tokenize(
+                test_task_hf, model_name, max_sequence_length)
+            try:
+                logits, labels, metrics = (dummy_trainer  # type: ignore
+                                           .predict(test_task_hf_tokenized))
+                tasks[task_name] = {
+                    'test': test_task,
+                    'logits': logits,
+                    'labels': labels,
+                    'metrics': metrics,
+                }
+            except Exception as e:
+                print(f"Error in task {task_name}: {e}")
+                raise e
+
+     # Add baseline metrics as well so we can merge the plots in wandb
     labels = test['correct']
     dist_baseline = lass.metrics.baseline.baseline(test)
     get_baseline = lass.metrics.hf.get_baseline_metrics
@@ -80,21 +116,6 @@ def test(
     # Dummy Trainer for easy batched predictions
     dummy_args = TrainingArguments(output_dir="tmp_trainer")  # To silence warning
     dummy_trainer = Trainer(model=model, args=dummy_args, compute_metrics=compute_metrics_plus)
-
-    # Evaluate per task
-    if per_task:
-        for task in test.task.unique()[33:]:
-            test_task = test.loc[test.task == task]
-            test_task_hf = lass.pipeline.huggingfaceify(test_task)
-            print(test_task_hf[0])
-            test_task_hf_tokenized = lass.pipeline.tokenize(
-                test_task_hf, model_name, max_sequence_length)
-            try:
-                dummy_trainer.predict(test_task_hf_tokenized)
-            except Exception as e:
-                print(f"Error in task {task}: {e}")
-                raise e
-        return
 
     # Tokenize dataset
     logging.info("Starting tokenization")
@@ -112,4 +133,4 @@ def test(
         'logits': logits,
         'labels': labels,
         'metrics': metrics,
-    }
+    } | {'tasks': tasks} if per_task else {}
