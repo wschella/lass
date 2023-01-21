@@ -50,7 +50,14 @@ def test(
         include_model=include_model_in_input,
         include_n_targets=include_n_targets_in_input)
 
+    # In case of population-split, split will order by input. Make sure prepend_extra_features can not change the order.
+    assert not include_n_targets_in_input or not data.model_name.nunique(
+    ) > 1, "Population split not supported with include_n_targets_in_input"
+
     train, test = lass.datasets.split(split, data, test_fraction=test_fraction, seed=seed)
+
+    # NOTE: Temporary hack to only test on 128b for population experiment
+    # test = test.loc[test.model_name == '128b']
 
     # Log some stats & examples
     stats = merge(analyse(train), analyse(test), 'train', 'test')
@@ -90,13 +97,13 @@ def test(
             test_task_hf_tokenized = lass.pipeline.tokenize(
                 test_task_hf, model_name, max_sequence_length)
             try:
-                logits, labels, metrics = (dummy_trainer  # type: ignore
+                logits, labels, results = (dummy_trainer  # type: ignore
                                            .predict(test_task_hf_tokenized))
                 tasks[task_name] = {
                     'test': test_task,
                     'logits': logits,
                     'labels': labels,
-                    'metrics': metrics,
+                    'metrics': results,  # called something else to not clash with metric names
                 }
             except Exception as e:
                 print(f"Error in task {task_name}: {e}")

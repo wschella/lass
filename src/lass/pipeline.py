@@ -53,6 +53,7 @@ def prepend_extra_features(df: pd.DataFrame, include_model: bool, include_n_targ
 
     # Prepend extra features if needed
     if include_model:
+        # E.g. FAM: BIG-G T=0 SIZE: 128b
         model_formatter = lambda r: \
             f"FAM: {r['model_family']} SIZE:{r['model_name']} "
     if include_n_targets:

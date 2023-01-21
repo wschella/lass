@@ -72,6 +72,10 @@ def train(
         include_model=include_model_in_input,
         include_n_targets=include_n_targets_in_input)
 
+    # In case of population-split, split will order by input. Make sure prepend_extra_features can not change the order.
+    assert not include_n_targets_in_input or not data.model_name.nunique(
+    ) > 1, "Population split not supported with include_n_targets_in_input"
+
     train, test = lass.datasets.split(split, data, test_fraction=test_fraction, seed=seed)
 
     # Sometimes we just want a little smaller datasets for speed

@@ -175,6 +175,7 @@ class LogLoader():
                 task_log[model_id] = resultsfile
             yield task_log
 
+    # TODO: Rename to load_per_file
     def load_per_model(self) -> Iterator[bb.ResultsFileData]:
         for task_name in self._iter_tasks():
             for _, resultsfile in self._iter_resultsfiles(task_name):

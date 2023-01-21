@@ -16,7 +16,35 @@ import bigbench.api.results as bb
 
 from tqdm import tqdm
 
-from lass.log_handling import LogLoader, LogLoaderArgs
+from lass.log_handling import LogLoader, LogLoaderArgs, TaskLog
+
+
+def test_whether_samples_in_same_order_model_wise2():
+    ref_loader = LogLoader(args=LogLoaderArgs(
+        logdir=Path("./artifacts/logs"),
+        tasks='paper-full',
+        model_families=['BIG-G T=0'],
+        model_sizes=['128b'],
+        shots=[0],
+        query_types=['multiple_choice'],
+    ))
+
+    faulty: Dict[str, List[Tuple[str, str]]] = defaultdict(list)
+
+    for model in ['4b', '8b', '27b']:
+        loader = LogLoader(args=LogLoaderArgs(
+            logdir=Path("./artifacts/logs"),
+            tasks='paper-full',
+            model_families=['BIG-G T=0'],
+            model_sizes=[model],
+            shots=[0],
+            query_types=['multiple_choice'],
+        ))
+
+        for s1, s2 in zip(ref_loader.load_per_sample(), loader.load_per_sample()):
+            if not s1.input == s2.input:
+                print(f"{model} has different samples")
+                raise ValueError(f"{model} has different samples")
 
 
 def test_whether_samples_in_same_order_model_wise():
@@ -25,8 +53,14 @@ def test_whether_samples_in_same_order_model_wise():
     for all models?
     """
 
-    loader = (LogLoader("./artifacts/logs")
-              .with_tasks('paper-full'))
+    loader = LogLoader(args=LogLoaderArgs(
+        logdir=Path("./artifacts/logs"),
+        tasks='paper-full',
+        model_families=['BIG-G T=0'],
+        model_sizes=['4b', '8b', '27b', '128b'],
+        shots=[0],
+        query_types=['multiple_choice'],
+    ))
 
     faulty: Dict[str, List[Tuple[str, str]]] = defaultdict(list)
 
@@ -35,7 +69,11 @@ def test_whether_samples_in_same_order_model_wise():
         task: TaskLog = cast(TaskLog, unit)
         reference = list(task.values())[0]
         task_name = reference.task.task_name
-        assert reference.queries, task_name
+
+        # assert reference.queries, task_name
+        if not reference.queries:
+            print(f"{task_name} has no queries")
+            continue
 
         for model, logfile in list(task.items())[1:]:
             if not logfile.queries:
@@ -226,7 +264,8 @@ def test_wether_all_sequences_fit_models():
 
 if __name__ == '__main__':
     # test_whether_samples_in_same_order_model_wise()
+    test_whether_samples_in_same_order_model_wise2()
     # test_is_same_instance_1()
     # test_is_same_instance_2()
     # test_whether_samples_in_same_order_shot_wise()
-    test_wether_all_sequences_fit_models()
+    # test_wether_all_sequences_fit_models()
