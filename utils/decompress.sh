@@ -5,7 +5,7 @@ decompress() {
   path=$1
   task=$(echo $path | cut -d'/' -f4)
   echo "Decompressing $task"
-  mkdir -p data/$task
+  mkdir -p artifacts/logs/$task
   lrzuntar -q -p 1 -O artifacts/logs/$task/ -d $path
 }
 export -f decompress
