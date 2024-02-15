@@ -4,13 +4,15 @@ This repo contains the code for the experiments regarding building assessor mode
 
 ## Setup
 
-- Since we have BIG-bench as a submodule, clone this repo with `git clone --recursive <url>`
-- Make sure Git LFS is installed.
-- `cd bigbench; git lfs install; git lfs pull`
-- Initialize Conda environment.yml with `???`
-- OUTDATED FROM here on
-- `poetry install`
-- Decompress all instance data with `./scripts/decompress.sh` (UNIX only, requires `parallel` to be installed.)
+Due to the use of Git LFS & Git submodules, mixing both Conda and Poetry, and the usual Python install experience (especially in ML), the process is a bit long.
+
+1. Make sure [Git LFS](https://git-lfs.com/) is installed.
+2. Clone this repo. Use `git clone --recursive git@github.com:wschella/lass.git` to also immediately clone the BIG-bench submodule.
+3. Pull in BIG-bench data: `cd lass; cd bigbench; git lfs install; git lfs pull; cd -`.
+4. Initialize the Conda environment.yml with `conda env create --prefix .venv -f environment.yml` (or however you prefer).
+5. Remove all dependencies from BIG-bench, since we really only care about their (no-deps) API and data: `echo -n > bigbench/requirements.txt`.
+6. `poetry install` to install all extra dependencies.
+7. Decompress all instance data with `./scripts/decompress.sh` (UNIX only, requires `parallel` and `lrzip` to be installed.)
 
 ## References
 
