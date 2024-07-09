@@ -19,16 +19,17 @@ def main():
     test(
         data_args=LogLoaderArgs(
             logdir="artifacts/logs",
-            tasks="paper-full",
+            # tasks="paper-full",
+            tasks=["hyperbaton"],
             model_families=["BIG-G T=0"],
-            # model_sizes=["128b"],
-            model_sizes=["2m"],
+            model_sizes=["128b"],
+            # model_sizes=["2m"],
             shots=[0],
             query_types=["multiple_choice"],
         ),
-        model_name="microsoft/deberta-v3-small",
+        model_name="microsoft/deberta-v3-base",
         split="instance",
-        model_loc="notebooks/scaling-0shot-small/deberta-small-for-2m-bs32-0sh-instance-split-10281649/checkpoint-4000",
+        model_loc="./artifacts/assessors/reference-models/deberta-reference-bs16*2-0sh-instance-split-10241537/checkpoint-4000",
         per_task=True,
     )
 
