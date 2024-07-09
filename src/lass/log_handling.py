@@ -1,10 +1,11 @@
 from __future__ import annotations
-from typing import *
+from typing import List, Tuple, Dict, Union, Optional, Iterator, Literal
 from pathlib import Path
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 import json
 
 from tqdm import tqdm
+from bigbench.api.task import ScoreData
 import bigbench.api.results as bb
 
 MODEL_FAMILIES = [
@@ -38,35 +39,34 @@ ModelId = Tuple[str, str]
 TaskLog = Dict[ModelId, bb.ResultsFileData]
 
 TaskList = Union[
-    Literal['paper-full'],
-    Literal['paper-lite'],
-    Literal['pipeline-test'],
-    List[str]
+    Literal["paper-full"], Literal["paper-lite"], Literal["pipeline-test"], List[str]
 ]
 
 # The different query types
-QueryType = Union[Literal['generative'], Literal['multiple_choice'], Literal['scoring']]
+QueryType = Union[Literal["generative"], Literal["multiple_choice"], Literal["scoring"]]
 QUERY_TYPES = {
-    'generative': bb.GenerativeQuery,
-    'multiple_choice': bb.MultipleChoiceQuery,
-    'scoring': bb.ScoringQuery,
+    "generative": bb.GenerativeQuery,
+    "multiple_choice": bb.MultipleChoiceQuery,
+    "scoring": bb.ScoringQuery,
 }
 
 # The multiple types of query functions
-QueryFunction = Union[Literal['cond_log_prob'], Literal['generate_text']]
+QueryFunction = Union[Literal["cond_log_prob"], Literal["generate_text"]]
 
 
 @dataclass
-class LogLoaderArgs():
+class LogLoaderArgs:
     logdir: Union[Path, str]
 
     # Filters
-    tasks: Optional[Union[
-        Literal['paper-full'],
-        Literal['paper-lite'],
-        Literal['pipeline-test'],
-        List[str]
-    ]] = None
+    tasks: Optional[
+        Union[
+            Literal["paper-full"],
+            Literal["paper-lite"],
+            Literal["pipeline-test"],
+            List[str],
+        ]
+    ] = None
     model_families: Optional[List[str]] = None
     model_sizes: Optional[List[str]] = None
     query_types: Optional[List[QueryType]] = None
@@ -76,11 +76,13 @@ class LogLoaderArgs():
     # Options
     include_unknown_shots: bool = False
     exclude_faulty_tasks: bool = True
-    include_queries: bool = True  # Wether to include queries & samples in the returned data.
+    include_queries: bool = (
+        True  # Wether to include queries & samples in the returned data.
+    )
     progress_bar: bool = False
 
 
-class LogLoader():
+class LogLoader:
     """
     Build a stream of tasks/queries/samples filtered by task/model/shots.
 
@@ -90,6 +92,7 @@ class LogLoader():
             - per_query
                 - per_sample
     """
+
     logdir: Path
     progress_bar: bool
     tasks: List[str]
@@ -109,7 +112,7 @@ class LogLoader():
         if not self.logdir.exists():
             raise ValueError(f"Log directory {args.logdir} does not exist.")
 
-        tasks = args.tasks or 'paper-full'
+        tasks = args.tasks or "paper-full"
         self.with_tasks(tasks, exclude_faulty=args.exclude_faulty_tasks)
 
         self.with_model_families(args.model_families)
@@ -119,11 +122,11 @@ class LogLoader():
         self.with_shots(args.shots, include_unknown=args.include_unknown_shots)
 
     def with_tasks(self, tasklist: TaskList, exclude_faulty: bool = True) -> LogLoader:
-        if tasklist == 'paper-full':
+        if tasklist == "paper-full":
             self.tasks = PaperTasks.full()
-        elif tasklist == 'paper-lite':
+        elif tasklist == "paper-lite":
             self.tasks = PaperTasks.lite()
-        elif tasklist == 'pipeline-test':
+        elif tasklist == "pipeline-test":
             self.tasks = PaperTasks.lite()[:10]
         elif isinstance(tasklist, list):
             self.tasks = tasklist
@@ -151,11 +154,15 @@ class LogLoader():
             self._query_types = [QUERY_TYPES[q] for q in query_types]
         return self
 
-    def with_query_function(self, query_function: List[QueryFunction] | None) -> LogLoader:
+    def with_query_function(
+        self, query_function: List[QueryFunction] | None
+    ) -> LogLoader:
         self.query_function = query_function
         return self
 
-    def with_shots(self, shots: List[int] | None, include_unknown: bool = False) -> LogLoader:
+    def with_shots(
+        self, shots: List[int] | None, include_unknown: bool = False
+    ) -> LogLoader:
         self.include_unknown_shots = include_unknown
 
         if shots is None:
@@ -172,6 +179,7 @@ class LogLoader():
             task_log: TaskLog = {}
             for model_id, resultsfile in self._iter_resultsfiles(task_name):
                 resultsfile.queries = list(self._iter_queries(resultsfile))
+                resultsfile.scores = list(self._iter_scores(resultsfile))
                 task_log[model_id] = resultsfile
             yield task_log
 
@@ -204,14 +212,18 @@ class LogLoader():
         for task in tqdm(self.tasks, disable=not self.progress_bar):
             yield task
 
-    def _iter_resultsfiles(self, task_name: str) -> Iterator[Tuple[ModelId, bb.ResultsFileData]]:
+    def _iter_resultsfiles(
+        self, task_name: str
+    ) -> Iterator[Tuple[ModelId, bb.ResultsFileData]]:
         # Iterate over all models we care about.
-        logfiles = (self.logdir / task_name).glob('*.json')
+        logfiles = (self.logdir / task_name).glob("*.json")
         for path in logfiles:
-
             # Filter out models we don't care about.
             model_family, model_size = self._extract_model_from_path(path)
-            if self.model_families is not None and model_family not in self.model_families:
+            if (
+                self.model_families is not None
+                and model_family not in self.model_families
+            ):
                 continue
             if self.model_sizes is not None and model_size not in self.model_sizes:
                 continue
@@ -221,7 +233,8 @@ class LogLoader():
                 try:
                     logs_json = json.load(logfile)
                     logs: bb.ResultsFileData = bb.ResultsFileData.fromdict(
-                        logs_json, include_queries=self.include_queries)
+                        logs_json, include_queries=self.include_queries
+                    )
                 except Exception as e:
                     print(f"Failed to parse for task {task_name} at {path}")
                     raise e
@@ -232,7 +245,7 @@ class LogLoader():
         if not self.include_queries:
             return  # i.e. StopIteration
 
-        for query in (resultsfile.queries or []):
+        for query in resultsfile.queries or []:
             if self._include_query(query):
                 yield query
 
@@ -255,14 +268,33 @@ class LogLoader():
                 include = False
         return include
 
+    def _iter_scores(self, resultsfile: bb.ResultsFileData) -> Iterator[ScoreData]:
+        for score in resultsfile.scores or []:
+            if self._include_score(score):
+                yield score
+
+    def _include_score(self, score: ScoreData) -> bool:
+        include = True
+        if self.shots is not None:
+            if (score.number_of_shots is not None) and (
+                score.number_of_shots not in self.shots
+            ):
+                include = False
+
+        if self.include_unknown_shots is False:
+            if score.number_of_shots is None:
+                include = False
+
+        return include
+
     def _extract_model_from_path(self, path: Path) -> Tuple[str, str]:
-        [_, model_family, model_size, *rest] = path.stem.split('_')
+        [_, model_family, model_size, *rest] = path.stem.split("_")
         if rest:
-            model_family += ' ' + ' '.join(rest)
+            model_family += " " + " ".join(rest)
         return model_family, model_size
 
 
-class LogIssues():
+class LogIssues:
     @staticmethod
     def with_issues():
         """
@@ -270,9 +302,9 @@ class LogIssues():
         unless special care is taken.
         """
         return (
-            LogIssues.with_different_samples_modelwise() +
-            LogIssues.without_target() +
-            LogIssues.with_unrecoverable_faulty_scores()
+            LogIssues.with_different_samples_modelwise()
+            + LogIssues.without_target()
+            + LogIssues.with_unrecoverable_faulty_scores()
         )
 
     @staticmethod
@@ -292,9 +324,7 @@ class LogIssues():
         Returns a list of tasks where the scores are not binary.
         TODO: Should be checked if there are more.
         """
-        return [
-            "emojis_emotion_prediction"
-        ]
+        return ["emojis_emotion_prediction"]
 
     @staticmethod
     def with_unrecoverable_faulty_scores():
@@ -449,8 +479,7 @@ class LogIssues():
         ]
 
 
-class PaperTasks():
-
+class PaperTasks:
     @staticmethod
     def full():
         """
