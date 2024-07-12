@@ -1,9 +1,7 @@
 import dataclasses
 import os
 import logging
-from datetime import datetime
-from dataclasses import dataclass
-from typing import Any, Dict, Literal, Optional, Union
+from typing import Any, Dict, Literal, Optional, Tuple, Union
 
 import wandb
 import pandas as pd
@@ -68,34 +66,10 @@ def train(
     train_dataset = tokenized_datasets["train"].shuffle(seed=config.seed)
     val_dataset = tokenized_datasets["val"]
 
-    # Setup tagging and paths
-    uses_pop_data = (
-        len(config.data_spec.model_families or []) != 1
-        or len(config.data_spec.model_sizes or []) != 1
-    )
-    model_name_short = log_info.model_alias or model_name
-    shot_str = (
-        ",".join([str(s) for s in config.data_spec.shots])
-        if config.data_spec.shots
-        else "all"
-    )
-    bs = f"{hypers.batch_size * hypers.gradient_accumulation_steps}"
-    tags = [
-        f"test" if is_test_run else None,
-        f"{model_name_short}",
-        f"bs{bs}",
-        f"{shot_str}sh",
-        f"pop" if uses_pop_data else None,
-        f"{config.split_type}-split",
-    ]
-    name = "_".join([t for t in tags if t is not None])
-
-    # TODO: Assert loginfo output_dir exists, or make it?
+    name, tags = make_model_id(config)
 
     # Setup wandb
-    if isinstance(config.data_spec.tasks, str):
-        wandb_tasks = str(config.data_spec.tasks)
-    elif isinstance(config.data_spec.tasks, list):
+    if isinstance(config.data_spec.tasks, list):
         if len(config.data_spec.tasks) > 5:
             wandb_tasks = f"unknown-set-len-{len(config.data_spec.tasks)}"
         else:
@@ -109,16 +83,16 @@ def train(
         wandb.init(
             mode="disabled" if is_test_run else "online",
             project="lass",
-            dir=f"{log_info.output_dir or '.'}/wandb",
+            dir=log_info.output_dir,
             group=log_info.log_group,
             name=name,
             config=dataclasses.asdict(config),
             tags=[
                 f"split:{config.split_type}-split",
-                f"assr:{model_name_short}",
+                f"assr:{tags['model_alias']}",
                 f"tasks:{wandb_tasks}",
-                f"pop:{'yes' if uses_pop_data else 'no'}",
-                f"shots:{shot_str}",
+                f"pop:{'yes' if tags['uses_pop_data'] else 'no'}",
+                f"shots:{tags['shots']}",
             ],
         )
         wandb.config.stats = stats
@@ -130,7 +104,7 @@ def train(
         model.config.pad_token_id = model.config.eos_token_id
 
     default_args: Dict[str, Any] = {
-        "output_dir": f"{log_info.output_dir or '.'}/{name}-{datetime.now().strftime('%m%d%H%M')}",
+        "output_dir": log_info.output_dir,
         "optim": "adamw_torch",
         "evaluation_strategy": "steps",
         "report_to": "none" if is_test_run else "wandb",
@@ -187,3 +161,38 @@ def train(
         wandb.finish()
 
     return model
+
+
+def make_model_id(config) -> Tuple[str, Dict[str, Any]]:
+    uses_pop_data = (
+        len(config.data_spec.model_families or []) != 1
+        or len(config.data_spec.model_sizes or []) != 1
+    )
+    model_alias = config.log_info.model_alias or config.model_name
+    shot_str = (
+        ",".join([str(s) for s in config.data_spec.shots])
+        if config.data_spec.shots
+        else "all"
+    )
+    batch_size = (
+        f"{config.hypers.batch_size * config.hypers.gradient_accumulation_steps}"
+    )
+
+    tags = [
+        f"test" if config.is_test_run else None,
+        f"{model_alias}",
+        f"bs{batch_size}",
+        f"{shot_str}sh",
+        f"pop" if uses_pop_data else None,
+        f"{config.split_type}-split",
+    ]
+    name = "_".join([t for t in tags if t is not None])
+    return (
+        name,
+        {
+            "uses_pop_data": uses_pop_data,
+            "batch_size": batch_size,
+            "model_alias": model_alias,
+            "shots": shot_str,
+        },
+    )

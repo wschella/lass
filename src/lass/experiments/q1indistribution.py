@@ -1,10 +1,14 @@
 import argparse
+import dataclasses
 import logging
+import json
 from dataclasses import dataclass
+from datetime import datetime
 
 # autopep8: off
 import os
 from pathlib import Path
+import shutil
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -44,6 +48,8 @@ def main():
 
 def run(args: Args):
     is_test_run = True
+    artifacts = Path("./artifacts")
+
     config = cfg.Config(
         seed=args.seed,
         is_test_run=is_test_run,
@@ -66,12 +72,19 @@ def run(args: Args):
         include_n_targets_in_input=False,
         hypers=cfg.HYPER_DEFAULT_REDUCED_MEM,
         log_info=cfg.LogInfo(
-            output_dir="./artifacts/assessors/q1indistribution/",
+            output_dir=str(artifacts / "assessors" / "q1indistribution"),
             model_alias="deberta-base",
             log_group="q1indistribution" if not is_test_run else "pipeline-test",
             use_wandb=False,
         ),
     )
+
+    if args.test_with:
+        # This would look something like
+        # "./artifact/assessors/q1indistribution/deberta-base_20210901120000/checkpoint-4000"
+        config_path = args.test_with.parent / "config.json"
+        with open(config_path, "r") as f:
+            config = cfg.Config.from_dict(json.load(f))
 
     data = lass.data.loading.load(config.data_spec, config.is_test_run)
     data = lass.data.wrangling.wrangle(data)
@@ -79,7 +92,24 @@ def run(args: Args):
         data, config.split_type, config.split_fraction, config.seed
     )
 
-    if not args.test_with:
+    # Set specific model_id
+    model_id, _ = lass.train.make_model_id(config)
+    model_id_timed = f"{model_id}-{datetime.now().strftime('%m%d%H%M')}"
+
+    # Just load existing model
+    if args.test_with:
+        model = args.test_with
+
+    # Actually train
+    else:
+        # Save config
+        output_dir = Path(config.log_info.output_dir) / model_id_timed
+        output_dir.mkdir(parents=True, exist_ok=True)
+        config.log_info.output_dir = str(output_dir)
+        with open(output_dir / "config.json", "w") as f:
+            json.dump(dataclasses.asdict(config), f, indent=2)
+
+        # Train
         model = lass.train.train(
             train,
             test,
@@ -89,14 +119,39 @@ def run(args: Args):
             config=config,
             is_test_run=is_test_run,
         )
-    else:
-        model = args.test_with
 
-    # TODO: Print relevant CSV, do plotting?
-    # TODO: Make sure model_name actually matches model?
+    # Copy config to CSV output dir
+    csv_output_dir = artifacts / "csv-results-new" / "q1indistribution" / model_id_timed
+    csv_output_dir.mkdir(parents=True, exist_ok=True)
+    with open(csv_output_dir / "config.json", "w") as f:
+        json.dump(dataclasses.asdict(config), f, indent=2)
+
+    # Gather test predictions
     results = lass.test.test(test, model, config.model)
+
+    # Save predictions and metrics
+    with open(csv_output_dir / "metrics.json", "w") as f:
+        json.dump(results["metrics"], f, indent=2)
+    # with open(csv_output_dir / "predictions.json", "w") as f:
+    # json.dump((results["logits"], results["labels"]), f)
+
+    # Save predictions and metrics per task
     results_per_task = lass.test.test_per_task(test, model, config.model)
-    print(results)
+    with open(csv_output_dir / "metrics_per_task.json", "w") as f:
+        metrics = {k: v["metrics"] for k, v in results_per_task.items()}
+        json.dump(metrics, f, indent=2)
+    # with open(csv_output_dir / "predictions_per_task.json", "w") as f:
+    #     predictions = {
+    #         k: (v["logits"], v["labels"]) for k, v in results_per_task.items()
+    #     }
+    #     json.dump(predictions, f)
+
+    # Copy this dir to "latest" dir as well
+    latest_dir = csv_output_dir.parent / "latest"
+    latest_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(csv_output_dir, latest_dir / csv_output_dir.name)
+
+    print(results["metrics"])
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import lass.data
@@ -35,6 +36,13 @@ class Config:
     include_n_targets_in_input: bool
     hypers: HyperParams
     log_info: LogInfo
+
+    @staticmethod
+    def from_dict(d: Dict[str, Any]) -> "Config":
+        data_spec = lass.log_handling.LogLoaderArgs(**d.pop("data_spec"))
+        hypers = HyperParams(**d.pop("hypers"))
+        log_info = LogInfo(**d.pop("log_info"))
+        return Config(data_spec=data_spec, hypers=hypers, log_info=log_info, **d)
 
 
 HYPER_DEFAULT = HyperParams(
