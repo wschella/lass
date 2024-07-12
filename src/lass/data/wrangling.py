@@ -3,10 +3,27 @@ from typing import Any, Union, Literal, cast
 
 import pandas as pd
 import numpy as np
-
 from transformers.models.auto.tokenization_auto import AutoTokenizer
 from datasets.arrow_dataset import Dataset
 from datasets.dataset_dict import DatasetDict
+
+
+def wrangle(
+    df: pd.DataFrame,
+    include_model_in_input: bool = False,
+    include_n_targets_in_input: bool = True,
+) -> pd.DataFrame:
+    df = binarize(df)
+    df = augment(df)
+    # df = clean(df)  # TODO: Still needed?
+
+    df = prepend_extra_features(
+        df,
+        include_model=include_model_in_input,
+        include_n_targets=include_n_targets_in_input,
+    )
+
+    return df
 
 
 def augment(df: pd.DataFrame) -> pd.DataFrame:
@@ -47,6 +64,11 @@ def binarize(df: pd.DataFrame) -> pd.DataFrame:
 def prepend_extra_features(
     df: pd.DataFrame, include_model: bool, include_n_targets: bool
 ) -> pd.DataFrame:
+    # In case of population-split, split will order by input. Make sure prepend_extra_features can not change the order.
+    assert (
+        not include_n_targets or not df.model_name.nunique() > 1
+    ), "Population split not supported with include_n_targets_in_input"
+
     # No-op if we don't need to include any extra features
     if not include_model and not include_n_targets:
         return df
@@ -78,17 +100,11 @@ def huggingfaceify(df: pd.DataFrame) -> Dataset:
     return Dataset.from_pandas(df_hf, preserve_index=False)
 
 
-def get_tokenizer(
-    model_name: str, truncation_side: Union[Literal["left"], Literal["right"]] = "right"
-) -> Any:
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_name, truncation_side=truncation_side
-    )
-
-    if model_name == "gpt2":
-        tokenizer.pad_token = tokenizer.eos_token
-
-    return tokenizer
+def huggingfaceify_splits(train: pd.DataFrame, test: pd.DataFrame) -> DatasetDict:
+    ds = DatasetDict()
+    ds["train"] = huggingfaceify(train)
+    ds["test"] = huggingfaceify(test)
+    return ds
 
 
 def tokenize(
@@ -97,7 +113,7 @@ def tokenize(
     max_sequence_length: int,
     truncation_side: Union[Literal["left"], Literal["right"]] = "right",
 ) -> Any:
-    tokenizer = get_tokenizer(model_name, truncation_side=truncation_side)
+    tokenizer = _get_tokenizer(model_name, truncation_side=truncation_side)
 
     def tokenize_function(examples):
         return tokenizer(
@@ -109,6 +125,19 @@ def tokenize(
         )
 
     return ds.map(tokenize_function, batched=True)
+
+
+def _get_tokenizer(
+    model_name: str, truncation_side: Union[Literal["left"], Literal["right"]] = "right"
+) -> Any:
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_name, truncation_side=truncation_side
+    )
+
+    if model_name == "gpt2":
+        tokenizer.pad_token = tokenizer.eos_token
+
+    return tokenizer
 
 
 def truncate(input: pd.Series, model_name: str, max_sequence_length: int) -> pd.Series:
@@ -126,7 +155,7 @@ def truncate_(input: Dataset, model_name: str, max_sequence_length: int):
     [1] https://github.com/huggingface/tokenizers/issues/826#issuecomment-966082496
     """
 
-    tokenizer = get_tokenizer(model_name)
+    tokenizer = _get_tokenizer(model_name)
 
     def truncate(batch):
         tokens = tokenizer(

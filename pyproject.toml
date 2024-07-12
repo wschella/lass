@@ -55,7 +55,10 @@ help    = "Notebook file to execute"
 options = ["-p"]
 
 [tool.ruff]
-ignore = ["F541"]
+ignore = [
+  "F541", # f-string is missing placeholders
+  "E731", # do not assign a lambda expression, use a def
+]
 
 [build-system]
 requires      = ["poetry-core>=1.0.0"]
