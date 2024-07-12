@@ -1,4 +1,4 @@
-from typing import *
+from typing import Any
 from collections import ChainMap
 
 import numpy as np
@@ -8,43 +8,51 @@ import sklearn.metrics as sk_metrics
 import wandb.plot
 
 from datasets.load import load_metric
-from transformers.trainer_callback import TrainerCallback
 
 import lass.metrics.brier
 
 accuracy_ = load_metric("accuracy")
-accuracy = lambda predictions, references, probs: \
-    accuracy_.compute(predictions=predictions, references=references)
+accuracy = lambda predictions, references, probs: accuracy_.compute(
+    predictions=predictions, references=references
+)
 
 precision_ = load_metric("precision")
-precision = lambda predictions, references, probs: \
-    precision_.compute(predictions=predictions, references=references)
+precision = lambda predictions, references, probs: precision_.compute(
+    predictions=predictions, references=references
+)
 
 recall_ = load_metric("recall")
-recall = lambda predictions, references, probs: \
-    recall_.compute(predictions=predictions, references=references)
+recall = lambda predictions, references, probs: recall_.compute(
+    predictions=predictions, references=references
+)
 
 f1_ = load_metric("f1")
-f1 = lambda predictions, references, probs: \
-    f1_.compute(predictions=predictions, references=references)
+f1 = lambda predictions, references, probs: f1_.compute(
+    predictions=predictions, references=references
+)
 
 roc_auc_ = load_metric("roc_auc")
-roc_auc = lambda predictions, references, probs: \
-    {"roc_auc": 0} if is_unrocable(predictions, references, probs) else \
-    roc_auc_.compute(
+roc_auc = (
+    lambda predictions, references, probs: {"roc_auc": 0}
+    if is_unrocable(predictions, references, probs)
+    else roc_auc_.compute(
         prediction_scores=probs,
         references=references,
     )
+)
 
 # We use micro, as we often work with small test sets, and we don't know much about the class importances.
 roc_auc_multiclass_ = load_metric("roc_auc", config_name="multiclass")
-roc_auc_multiclass = lambda predictions, references, probs: \
-    {"roc_auc": 0} if is_unrocable(predictions, references, probs) else \
-    roc_auc_multiclass_.compute(
+roc_auc_multiclass = (
+    lambda predictions, references, probs: {"roc_auc": 0}
+    if is_unrocable(predictions, references, probs)
+    else roc_auc_multiclass_.compute(
         prediction_scores=probs,
         references=references,
-        average="weighted", multi_class="ovr"
+        average="weighted",
+        multi_class="ovr",
     )
+)
 
 
 def is_unrocable(predictions, references, probs) -> bool:
@@ -53,8 +61,9 @@ def is_unrocable(predictions, references, probs) -> bool:
     return len(np.unique(references)) != n_classes
 
 
-balanced_accuracy = lambda predictions, references, probs: \
-    {"balanced_accuracy": sk_metrics.balanced_accuracy_score(references, predictions)}
+balanced_accuracy = lambda predictions, references, probs: {
+    "balanced_accuracy": sk_metrics.balanced_accuracy_score(references, predictions)
+}
 
 
 def brier_score(predictions, references, probs) -> dict[str, Any]:
@@ -74,10 +83,14 @@ def wandb_conf_matrix(predictions, references, probs) -> dict[str, float]:
 
 
 METRICS = {
-    "accuracy": accuracy, "precision": precision,
-    "recall": recall, "f1": f1, "roc_auc": roc_auc,
+    "accuracy": accuracy,
+    "precision": precision,
+    "recall": recall,
+    "f1": f1,
+    "roc_auc": roc_auc,
     "roc_auc_multiclass": roc_auc_multiclass,
-    "brier_score": brier_score, "balanced_accuracy": balanced_accuracy,
+    "brier_score": brier_score,
+    "balanced_accuracy": balanced_accuracy,
     "wandb_conf_matrix": wandb_conf_matrix,
 }
 
@@ -126,4 +139,6 @@ def get_metric_computer(metrics: list):
 
 
 def join_metrics(*computers):
-    return lambda eval_pred: dict(ChainMap(*[computer(eval_pred) for computer in computers]))
+    return lambda eval_pred: dict(
+        ChainMap(*[computer(eval_pred) for computer in computers])
+    )

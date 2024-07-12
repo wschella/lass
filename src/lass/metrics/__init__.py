@@ -1,2 +1,2 @@
-import lass.metrics.hf as hf
-import lass.metrics.pandas as pandas
+from lass.metrics import hf as hf
+from lass.metrics import pandas as pandas

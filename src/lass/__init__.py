@@ -1,1 +1,1 @@
-import lass.metrics as metrics
+from lass import metrics as metrics

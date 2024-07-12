@@ -1,10 +1,7 @@
-from gc import callbacks
 import os
 import logging
-from typing import *
+from typing import Any, Dict, Literal, Optional, Union
 from pathlib import Path
-from dataclasses import dataclass
-from pprint import pprint
 from datetime import datetime
 
 import wandb
@@ -14,7 +11,6 @@ from transformers.models.auto.modeling_auto import AutoModelForSequenceClassific
 from transformers.trainer import Trainer
 from transformers.training_args import TrainingArguments
 from datasets.dataset_dict import DatasetDict
-from torch.utils.data import Dataset
 
 import lass.datasets
 import lass.pipeline
@@ -26,10 +22,10 @@ from lass.log_handling import LogLoader, LogLoaderArgs
 
 def train(
     data_args: LogLoaderArgs,
-    split: Union[Literal['instance'], Literal['task'], Literal['task_DS']],
+    split: Union[Literal["instance"], Literal["task"], Literal["task_DS"]],
     model_name: str,
-    batch_size: int,
     group: str,
+    batch_size: int = 32,
     test_fraction: float = 0.2,
     test_max_instances: Optional[int] = 20000,
     train_max_instances: Optional[int] = None,
@@ -40,20 +36,19 @@ def train(
     gradient_accumulation_steps: int = 1,
     use_wandb: bool = True,
     is_test_run: bool = False,
-    include_model_in_input: bool = True,
-    include_n_targets_in_input: bool = True,
+    include_model_in_input: bool = False,
+    include_n_targets_in_input: bool = False,
     extra_training_args: Dict[str, Any] = {},
     output_dir: Optional[Union[Path, str]] = None,
-    truncation_side: Union[Literal['left'], Literal['right']] = "right"
+    truncation_side: Union[Literal["left"], Literal["right"]] = "right",
 ):
-
     if is_test_run:
         print("Running in test mode")
         n_epochs = 1
-        data_args.tasks = 'pipeline-test'
-        extra_training_args['eval_steps'] = 5
-        extra_training_args['save_steps'] = 5
-        extra_training_args['logging_steps'] = 5
+        data_args.tasks = "pipeline-test"
+        extra_training_args["eval_steps"] = 5
+        extra_training_args["save_steps"] = 5
+        extra_training_args["logging_steps"] = 5
         train_max_instances = 200
         test_max_instances = 200
         print(f"Tasks: {data_args.tasks}\n n_epochs: {n_epochs}")
@@ -70,51 +65,67 @@ def train(
     data = lass.pipeline.prepend_extra_features(
         data,
         include_model=include_model_in_input,
-        include_n_targets=include_n_targets_in_input)
+        include_n_targets=include_n_targets_in_input,
+    )
 
     # In case of population-split, split will order by input. Make sure prepend_extra_features can not change the order.
-    assert not include_n_targets_in_input or not data.model_name.nunique(
-    ) > 1, "Population split not supported with include_n_targets_in_input"
+    assert (
+        not include_n_targets_in_input or not data.model_name.nunique() > 1
+    ), "Population split not supported with include_n_targets_in_input"
 
-    train, test = lass.datasets.split(split, data, test_fraction=test_fraction, seed=seed)
+    train, test = lass.datasets.split(
+        split, data, test_fraction=test_fraction, seed=seed
+    )
 
     # Sometimes we just want a little smaller datasets for speed
     if train_max_instances is not None and len(train) > train_max_instances:
         train: pd.DataFrame = train.sample(  # type: ignore
-            n=train_max_instances, random_state=seed)
+            n=train_max_instances, random_state=seed
+        )
     if test_max_instances is not None and len(test) > test_max_instances:
         test: pd.DataFrame = test.sample(  # type: ignore
-            n=test_max_instances, random_state=seed)  # type: ignore
+            n=test_max_instances, random_state=seed
+        )  # type: ignore
 
     # Log some stats & examples
-    stats = merge(analyse(train), analyse(test), 'train', 'test')
+    stats = merge(analyse(train), analyse(test), "train", "test")
 
     dataset = lass.datasets.huggingfaceify_splits(train, test)
-    print(dataset['train'][0])
+    print(dataset["train"][0])
 
     # Tokenize dataset
     logging.info("Starting tokenization")
-    os.environ['TOKENIZERS_PARALLELISM'] = "true"
+    os.environ["TOKENIZERS_PARALLELISM"] = "true"
     tokenized_datasets: DatasetDict = lass.pipeline.tokenize(
-        dataset, model_name, max_sequence_length, truncation_side=truncation_side)
+        dataset, model_name, max_sequence_length, truncation_side=truncation_side
+    )
 
     train_dataset = tokenized_datasets["train"].shuffle(seed=seed)
     eval_dataset = tokenized_datasets["test"]
 
     # Setup tagging and paths
     uses_pop_data = (
-        len(data_args.model_families or []) != 1 or
-        len(data_args.model_sizes or []) != 1)
+        len(data_args.model_families or []) != 1
+        or len(data_args.model_sizes or []) != 1
+    )
     model_name_short = model_name_short or model_name
-    shot_str = ','.join([str(s) for s in loader.shots or []]) if data_args.shots else "all"
-    bs = batch_size if gradient_accumulation_steps == 1 else f"{batch_size}*{gradient_accumulation_steps}"
-    name = ""\
-        + (f"test-" if is_test_run else "")\
-        + (f"{model_name_short}")\
-        + (f"-bs{bs}")\
-        + (f"-{shot_str}sh")\
-        + (f'-pop' if uses_pop_data else '')\
+    shot_str = (
+        ",".join([str(s) for s in loader.shots or []]) if data_args.shots else "all"
+    )
+    bs = (
+        batch_size
+        if gradient_accumulation_steps == 1
+        else f"{batch_size}*{gradient_accumulation_steps}"
+    )
+    name = (
+        ""
+        + (f"test-" if is_test_run else "")
+        + (f"{model_name_short}")
+        + (f"-bs{bs}")
+        + (f"-{shot_str}sh")
+        + (f"-pop" if uses_pop_data else "")
         + (f"-{split}-split")
+    )
 
     # Setup wandb
     if use_wandb:
@@ -122,13 +133,13 @@ def train(
             wandb_tasks = str(data_args.tasks)
         elif isinstance(data_args.tasks, list):
             if len(data_args.tasks) > 5:
-                wandb_tasks = f"uknown-set-len-{len(data_args.tasks)}"
+                wandb_tasks = f"unknown-set-len-{len(data_args.tasks)}"
             else:
-                wandb_tasks = ','.join(data_args.tasks)
+                wandb_tasks = ",".join(data_args.tasks)
         else:
             wandb_tasks = str(data_args.tasks)
 
-        os.environ['WANDB_LOG_MODEL'] = "false"
+        os.environ["WANDB_LOG_MODEL"] = "false"
         wandb.login()
         wandb.init(
             project="lass",
@@ -143,7 +154,7 @@ def train(
                 f"tasks:{wandb_tasks}",
                 f"pop:{'yes' if uses_pop_data else 'no'}",
                 f"shots:{shot_str}",
-            ]
+            ],
         )
 
         wandb.config.seed = seed
@@ -152,13 +163,13 @@ def train(
         wandb.config.include_model_in_input = include_model_in_input
         wandb.config.include_n_targets_in_input = include_n_targets_in_input
         wandb.config.data = {
-            'query_types': ",".join(data_args.query_types or []),
-            'tasks': wandb_tasks,
-            'test_fraction': test_fraction,
-            'split': split,
-            'shots': shot_str,
-            'pop_model_family': data_args.model_families,
-            'pop_model_size': data_args.model_sizes,
+            "query_types": ",".join(data_args.query_types or []),
+            "tasks": wandb_tasks,
+            "test_fraction": test_fraction,
+            "split": split,
+            "shots": shot_str,
+            "pop_model_family": data_args.model_families,
+            "pop_model_size": data_args.model_sizes,
         }
         wandb.config.extra_training_args = extra_training_args
 
@@ -173,6 +184,8 @@ def train(
         "optim": "adamw_torch",
         "evaluation_strategy": "steps",
         "report_to": "wandb" if wandb else "none",
+        "warmup_steps": 3000,
+        "learning_rate": 2e-5,
         "per_device_train_batch_size": batch_size,
         "per_device_eval_batch_size": batch_size,
         "gradient_accumulation_steps": gradient_accumulation_steps,
@@ -184,18 +197,27 @@ def train(
     }
     training_args = TrainingArguments(**(default_args | extra_training_args))
 
-    metrics = ["accuracy", "precision", "recall", "f1",
-               "roc_auc", "brier_score", "balanced_accuracy"]
+    metrics = [
+        "accuracy",
+        "precision",
+        "recall",
+        "f1",
+        "roc_auc",
+        "brier_score",
+        "balanced_accuracy",
+    ]
     metrics_assessor = lass.metrics.hf.get_metric_computer(metrics)
 
     # Add baseline metrics as well so we can merge the plots in wandb
-    labels = test['correct']
+    labels = test["correct"]
     dist_baseline = lass.metrics.baseline.baseline(test)
     get_baseline = lass.metrics.hf.get_baseline_metrics
     compute_metrics_plus = lass.metrics.hf.join_metrics(
         metrics_assessor,
-        get_baseline(labels, metrics, test['conf_normalized'], prefix="conf_normalized_"),
-        get_baseline(labels, metrics, test['conf_absolute'], prefix="conf_absolute_"),
+        get_baseline(
+            labels, metrics, test["conf_normalized"], prefix="conf_normalized_"
+        ),
+        get_baseline(labels, metrics, test["conf_absolute"], prefix="conf_absolute_"),
         get_baseline(labels, metrics, dist_baseline, prefix="conf_distribution_"),
     )
 

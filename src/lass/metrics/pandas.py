@@ -1,4 +1,4 @@
-from typing import *
+from typing import Any, Dict, Tuple
 import math
 
 import pandas as pd
@@ -7,12 +7,16 @@ from sklearn import metrics as sk_metrics
 
 
 def LM_confidence_metrics(df: pd.DataFrame) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    df = df[df['correct'].isin([0.0, 1.0])]
-    conf_normalized = df.apply(lambda row: math.exp(np.max(row['normalized_scores'])), axis=1)
-    conf_absolute = df.apply(lambda row: math.exp(np.max(row['absolute_scores'])), axis=1)
+    df = df[df["correct"].isin([0.0, 1.0])]
+    conf_normalized = df.apply(
+        lambda row: math.exp(np.max(row["normalized_scores"])), axis=1
+    )
+    conf_absolute = df.apply(
+        lambda row: math.exp(np.max(row["absolute_scores"])), axis=1
+    )
     return (
-        confidence_metrics_(conf_normalized, df['correct']),  # type: ignore
-        confidence_metrics_(conf_absolute, df['correct']),  # type: ignore
+        confidence_metrics(conf_normalized, df["correct"]),  # type: ignore
+        confidence_metrics(conf_absolute, df["correct"]),  # type: ignore
     )
 
 

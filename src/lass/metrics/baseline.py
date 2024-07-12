@@ -1,4 +1,4 @@
-from typing import *
+from typing import Any, Dict
 import math
 
 import numpy as np
@@ -10,18 +10,24 @@ import lass.metrics.brier
 
 def baseline(df: pd.DataFrame) -> pd.Series:
     """
-    Compute a baseline prediction that simply predicts the score distribution, 
+    Compute a baseline prediction that simply predicts the score distribution,
     but disaggregated by task and model.
     """
-    return df.groupby(['model_family', 'model_name', 'task'])['correct'].transform('mean')
+    return df.groupby(["model_family", "model_name", "task"])["correct"].transform(
+        "mean"
+    )
 
 
 def analyse(df: pd.DataFrame) -> Dict[str, Any]:
     df_original = df
-    df = df[df['correct'].isin([0.0, 1.0])]
+    df = df[df["correct"].isin([0.0, 1.0])]
 
-    conf_normalized = df.apply(lambda row: math.exp(np.max(row['normalized_scores'])), axis=1)
-    conf_absolute = df.apply(lambda row: math.exp(np.max(row['absolute_scores'])), axis=1)
+    conf_normalized = df.apply(
+        lambda row: math.exp(np.max(row["normalized_scores"])), axis=1
+    )
+    conf_absolute = df.apply(
+        lambda row: math.exp(np.max(row["absolute_scores"])), axis=1
+    )
 
     def bs(target, confs):
         total, mcb, dsc, unc = lass.metrics.brier.brier_score(target, confs)
@@ -33,30 +39,36 @@ def analyse(df: pd.DataFrame) -> Dict[str, Any]:
         return sk_metrics.roc_auc_score(df.correct, confs)
 
     return {
-        'stats': {
-            'n_tasks': len(df['task'].unique()),
-            'n_instances': len(df),
-            'n_instances_nonbinary': len(df_original) - len(df),
+        "stats": {
+            "n_tasks": len(df["task"].unique()),
+            "n_instances": len(df),
+            "n_instances_nonbinary": len(df_original) - len(df),
         },
-        'metrics': {
-            'task-acc': df['correct'].mean(),
-            'conf-normalized': {
-                'acc': sk_metrics.accuracy_score(df['correct'], conf_normalized > 0.5),
-                'balanced_acc': sk_metrics.balanced_accuracy_score(df['correct'], conf_normalized > 0.5),
-                'roc_auc': roc_auc(conf_normalized),
-                ** bs(df['correct'], conf_normalized)
+        "metrics": {
+            "task-acc": df["correct"].mean(),
+            "conf-normalized": {
+                "acc": sk_metrics.accuracy_score(df["correct"], conf_normalized > 0.5),
+                "balanced_acc": sk_metrics.balanced_accuracy_score(
+                    df["correct"], conf_normalized > 0.5
+                ),
+                "roc_auc": roc_auc(conf_normalized),
+                **bs(df["correct"], conf_normalized),
             },
-            'conf-absolute': {
-                'acc': sk_metrics.accuracy_score(df['correct'], conf_absolute > 0.5),
-                'balanced_acc': sk_metrics.balanced_accuracy_score(df['correct'], conf_absolute > 0.5),
-                'roc_auc': roc_auc(conf_absolute),
-                **bs(df['correct'], conf_absolute)
+            "conf-absolute": {
+                "acc": sk_metrics.accuracy_score(df["correct"], conf_absolute > 0.5),
+                "balanced_acc": sk_metrics.balanced_accuracy_score(
+                    df["correct"], conf_absolute > 0.5
+                ),
+                "roc_auc": roc_auc(conf_absolute),
+                **bs(df["correct"], conf_absolute),
             },
         },
     }
 
 
-def merge(a: Dict[str, Any], b: Dict[str, Any], a_name: str, b_name: str) -> Dict[str, Any]:
+def merge(
+    a: Dict[str, Any], b: Dict[str, Any], a_name: str, b_name: str
+) -> Dict[str, Any]:
     """
     For each leaf in a dict returned by analyse(), merge the stats of a en b
     into a new dict with key the name of the overal dict.
@@ -70,7 +82,8 @@ def merge(a: Dict[str, Any], b: Dict[str, Any], a_name: str, b_name: str) -> Dic
     for (ka, va), (kb, vb) in zip(a.items(), b.items()):
         assert ka == kb, f"Keys of dicts don't match {ka} != {kb}"
         assert isinstance(va, dict) == isinstance(
-            vb, dict), f"Types of  dicts don't match {va} != {vb}"
+            vb, dict
+        ), f"Types of  dicts don't match {va} != {vb}"
 
         if isinstance(va, dict):
             d[ka] = merge(va, vb, a_name, b_name)
