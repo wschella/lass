@@ -36,13 +36,13 @@ def train(
 ) -> Module:
     if is_test_run:
         print("Running in test mode")
-        n_epochs = 1
+        hypers.n_epochs = 1
         hypers.extra["eval_steps"] = 5
         hypers.extra["save_steps"] = 5
         hypers.extra["logging_steps"] = 5
         train_max_instances = 200
         val_max_instances = 200
-        print(f"Tasks: {config.data_spec.tasks}\n n_epochs: {n_epochs}")
+        print(f"Tasks: {config.data_spec.tasks}\n n_epochs: {hypers.n_epochs}")
 
     # Sometimes we just want a little smaller datasets for speed
     if train_max_instances is not None and len(train_data) > train_max_instances:
@@ -113,7 +113,7 @@ def train(
         "per_device_train_batch_size": hypers.batch_size,
         "per_device_eval_batch_size": hypers.batch_size,
         "gradient_accumulation_steps": hypers.gradient_accumulation_steps,
-        "num_train_epochs": n_epochs,
+        "num_train_epochs": hypers.n_epochs,
         # This combination saves models immediately, but only keeps the best and the last.
         "load_best_model_at_end": True,
         "save_total_limit": 1,

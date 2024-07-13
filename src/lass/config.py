@@ -18,7 +18,7 @@ class LogInfo:
 class HyperParams:
     batch_size: int
     gradient_accumulation_steps: int
-    num_train_epochs: int
+    n_epochs: int
     warmup_steps: int
     learning_rate: float
     extra: Dict[str, Any]
@@ -48,7 +48,7 @@ class Config:
 HYPER_DEFAULT = HyperParams(
     batch_size=32,
     gradient_accumulation_steps=1,
-    num_train_epochs=6,
+    n_epochs=6,
     warmup_steps=3000,
     learning_rate=2e-5,
     extra={},
@@ -57,7 +57,7 @@ HYPER_DEFAULT = HyperParams(
 HYPER_DEFAULT_REDUCED_MEM = HyperParams(
     batch_size=16,
     gradient_accumulation_steps=2,
-    num_train_epochs=6,
+    n_epochs=6,
     warmup_steps=3000,
     learning_rate=2e-5,
     extra={},

@@ -9,9 +9,10 @@ from datetime import datetime
 import os
 from pathlib import Path
 import shutil
+from typing import Optional
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 # autopep8: on
 
@@ -25,7 +26,9 @@ from lass.log_handling import LogLoaderArgs
 @dataclass
 class Args:
     seed: int
+    is_test_run: bool
     test_with: Path
+    shots: Optional[list[int]]
 
 
 def main():
@@ -37,22 +40,23 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--is-test-run", action="store_true", default=False)
     parser.add_argument(
         "--test_with",
         type=Path,
     )
+    parser.add_argument("--shots", type=int, nargs="+", default=None)
     args_raw = parser.parse_args()
     args = Args(**vars(args_raw))
     run(args)
 
 
 def run(args: Args):
-    is_test_run = True
     artifacts = Path("./artifacts")
 
     config = cfg.Config(
         seed=args.seed,
-        is_test_run=is_test_run,
+        is_test_run=args.is_test_run,
         data_spec=LogLoaderArgs(
             logdir="artifacts/logs",
             tasks="paper-full",
@@ -62,7 +66,7 @@ def run(args: Args):
             # ],
             model_families=["BIG-G T=0"],
             model_sizes=["128b"],
-            shots=[3],
+            shots=[3] if args.shots is None else args.shots,
             query_types=["multiple_choice", "scoring", "generative"],
         ),
         model="microsoft/deberta-v3-base",
@@ -74,11 +78,14 @@ def run(args: Args):
         log_info=cfg.LogInfo(
             output_dir=str(artifacts / "assessors" / "q1indistribution"),
             model_alias="deberta-base",
-            log_group="q1indistribution" if not is_test_run else "pipeline-test",
-            use_wandb=False,
+            log_group="q1indistribution" if not args.is_test_run else "pipeline-test",
+            use_wandb=True,
         ),
     )
-
+    print(args.is_test_run)
+    raise NotImplementedError(
+        "This code is not up to date with the latest version of LASS"
+    )
     if args.test_with:
         # This would look something like
         # "./artifact/assessors/q1indistribution/deberta-base_20210901120000/checkpoint-4000"
@@ -117,7 +124,7 @@ def run(args: Args):
             hypers=config.hypers,
             log_info=config.log_info,
             config=config,
-            is_test_run=is_test_run,
+            is_test_run=args.is_test_run,
         )
 
     # Copy config to CSV output dir
@@ -149,7 +156,7 @@ def run(args: Args):
     # Copy this dir to "latest" dir as well
     latest_dir = csv_output_dir.parent / "latest"
     latest_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(csv_output_dir, latest_dir / csv_output_dir.name)
+    shutil.copytree(csv_output_dir, latest_dir)
 
     print(results["metrics"])
 
