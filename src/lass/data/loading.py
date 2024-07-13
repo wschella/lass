@@ -117,6 +117,7 @@ def remove_duplicate_queries(df):
     For the tasks that have both a multiple_choice and a scoring_generative query_type,
     remove one of them.
     """
+    raise NotImplementedError("Does not work with population data.")
 
     # Find the tasks that have both a multiple_choice and a scoring_generative query_type
     tasks_with_both = df[["task", "query_type"]].groupby("task").query_type.nunique()

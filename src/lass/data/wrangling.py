@@ -16,6 +16,7 @@ def wrangle(
     df = binarize(df)
     df = augment(df)
     # df = clean(df)  # TODO: Still needed?
+    # df = remove_bad_tasks(df) Note: Will make the data be different for different models
 
     df = prepend_extra_features(
         df,
@@ -40,24 +41,46 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
     """
     Clean the dataframe of samples that are not correct.
     """
-    faulty = df[df["n_targets"] == 1].index
-    df = df.drop(faulty)  # type: ignore
-    logging.info(f"Dropped {len(faulty)} samples with faulty targets")
+    single_target_mpc = df.query("task_type == 'mpc' and n_targets == 1").index
+    df = df.drop(single_target_mpc)
+    logging.info(f"Dropped {len(single_target_mpc)} single-target MPC tasks")
     return df
 
 
 def binarize(df: pd.DataFrame) -> pd.DataFrame:
     # Drop all samples that do not have binary correctness
     # We could also round instead of drop here
-    is_binary = df["correct"].isin([0.0, 1.0])
-    df = df[is_binary]  # TODO: Use df.drop(~is_binary)
-    logging.info(
-        f"Dropped {len(is_binary) - len(df)} samples with non-binary correctness"
-    )
+    is_non_binary = (~df["correct"].isin([0.0, 1.0])).index
+    df = df.drop(is_non_binary)
+    logging.info(f"Dropped {len(is_non_binary)} samples with non-binary correctness")
 
     # and convert the labels to ints afterwards
     df.loc[:, "correct"] = df["correct"].astype(int)
 
+    return df
+
+
+def remove_bad_tasks(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Remove tasks with aggregate performance that is too low
+    Note: This aggregates across models.
+    Note: Data will look different for different models.
+    """
+    # For MPC tasks, the threshold is random chance + 0.05
+    # with random chance being 1/n_targets
+    mpc_perf = df.query("task_type == 'mpc'").groupby("task_name").mean()
+    bad_mpc_tasks = mpc_perf[
+        mpc_perf["correct"] < 1 / mpc_perf["n_targets"] + 0.05
+    ].index
+    df = df[~df["task_name"].isin(bad_mpc_tasks)]
+
+    # For generative tasks, the threshold is 0.05
+    gen_tasks = (
+        df.query("task_type == 'generative'").groupby("task_name")["correct"].mean()
+    )
+    bad_gen_tasks = gen_tasks[gen_tasks < 0.05].index
+    df = df[~df["task_name"].isin(bad_gen_tasks)]
+    logging.info(f"Removed {len(bad_gen_tasks)} generative tasks with low performance")
     return df
 
 

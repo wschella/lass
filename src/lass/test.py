@@ -12,8 +12,8 @@ from torch.nn.modules.module import Module
 
 import lass.data.wrangling
 import lass.metrics
-import lass.metrics.baseline
-from lass.metrics.baseline import analyse, merge
+import lass.metrics.stats
+from lass.metrics.stats import analyse, merge
 
 
 def test(
@@ -46,27 +46,16 @@ def test(
         "brier_score",
         "balanced_accuracy",
     ]
-    metrics_assessor = lass.metrics.hf.get_metric_computer(metrics)
-
-    # Add baseline metrics as well so we can merge the plots in wandb
-    labels = test_data["correct"]
-    dist_baseline = lass.metrics.baseline.baseline(test_data)
-    get_baseline = lass.metrics.hf.get_baseline_metrics
-    compute_metrics_plus = lass.metrics.hf.join_metrics(
-        metrics_assessor,
-        get_baseline(
-            labels, metrics, test_data["conf_normalized"], prefix="conf_normalized_"
-        ),
-        get_baseline(
-            labels, metrics, test_data["conf_absolute"], prefix="conf_absolute_"
-        ),
-        get_baseline(labels, metrics, dist_baseline, prefix="conf_distribution_"),
-    )
 
     # Dummy Trainer for easy batched predictions
+    baselines = lass.metrics.baseline.get_baselines(test_data, metrics)
     dummy_args = TrainingArguments(output_dir="tmp_trainer")  # To silence warning
     dummy_trainer = Trainer(
-        model=model, args=dummy_args, compute_metrics=compute_metrics_plus
+        model=model,
+        args=dummy_args,
+        compute_metrics=lambda predictions: (
+            lass.metrics.compute_metrics_trainer(predictions, metrics) | baselines
+        ),
     )
 
     # Tokenize dataset
@@ -79,13 +68,13 @@ def test(
     )
 
     # Get Results
-    logits, labels, metrics = dummy_trainer.predict(test_hf_tokenized)
+    logits, labels, metrics_ = dummy_trainer.predict(test_hf_tokenized)
 
     return {
         "data": test_data,
         "logits": logits,
         "labels": labels,
-        "metrics": metrics,
+        "metrics": metrics_,
     }
 
 

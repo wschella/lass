@@ -1,5 +1,5 @@
+import math
 from typing import Any
-from collections import ChainMap
 
 import numpy as np
 import pandas as pd
@@ -8,8 +8,11 @@ import sklearn.metrics as sk_metrics
 import wandb.plot
 
 from datasets.load import load_metric
+from transformers.trainer_utils import EvalPrediction
 
+import lass.utils
 import lass.metrics.brier
+import lass.metrics.stats
 
 accuracy_ = load_metric("accuracy")
 accuracy = lambda predictions, references, probs: accuracy_.compute(
@@ -32,27 +35,32 @@ f1 = lambda predictions, references, probs: f1_.compute(
 )
 
 roc_auc_ = load_metric("roc_auc")
-roc_auc = (
-    lambda predictions, references, probs: {"roc_auc": 0}
-    if is_unrocable(predictions, references, probs)
-    else roc_auc_.compute(
+
+
+def roc_auc(predictions, references, probs) -> dict[str, float]:
+    if is_unrocable(predictions, references, probs):
+        return {"roc_auc": math.nan}
+
+    return roc_auc_.compute(
         prediction_scores=probs,
         references=references,
-    )
-)
+    ) or {"roc_auc": math.nan}
 
-# We use micro, as we often work with small test sets, and we don't know much about the class importances.
+
 roc_auc_multiclass_ = load_metric("roc_auc", config_name="multiclass")
-roc_auc_multiclass = (
-    lambda predictions, references, probs: {"roc_auc": 0}
-    if is_unrocable(predictions, references, probs)
-    else roc_auc_multiclass_.compute(
+
+
+def roc_auc_multiclass(predictions, references, probs) -> dict[str, float]:
+    # We use micro, as we often work with small test sets, and we don't know much about the class importances.
+    if is_unrocable(predictions, references, probs):
+        return {"roc_auc": math.nan}
+
+    return roc_auc_multiclass_.compute(
         prediction_scores=probs,
         references=references,
         average="weighted",
         multi_class="ovr",
-    )
-)
+    ) or {"roc_auc": math.nan}
 
 
 def is_unrocable(predictions, references, probs) -> bool:
@@ -95,50 +103,34 @@ METRICS = {
 }
 
 
-def get_baseline_metrics(labels, metrics: list, baseline: pd.Series, prefix: str = ""):
+def compute_metrics(
+    predictions: pd.Series | np.ndarray,
+    labels: pd.Series | np.ndarray,
+    metrics: list,
+) -> dict[str, float]:
     metrics = [METRICS[metric] for metric in metrics]
     scores = {}
-    prefixer = lambda d: {f"{prefix}{k}": v for k, v in d.items()}
     for metric in metrics:
-        score = metric(baseline > 0.5, labels, baseline.values)
+        # Most metrics use the probabilities, but some (like accuracy) need a decision (e.g. conf > 0.5)
+        score = metric(predictions > 0.5, labels, predictions)
         assert score is not None
-        scores.update(prefixer(score))
-    return lambda eval_pred: scores
+    return scores
 
 
-def get_metric_computer(metrics: list):
-    """
-    Args:
-    -----
-        metrics: list of metric names
+def compute_metrics_trainer(
+    predictions: EvalPrediction, metric_names: list[str]
+) -> dict[str, float]:
+    metrics = [METRICS[metric] for metric in metric_names]
 
-    Returns:
-    --------
-        A function that takes a batch of predictions+labels and returns
-        a dict with calculated metrics.
-    """
-    metrics = [METRICS[metric] for metric in metrics]
+    logits = predictions.predictions
+    labels = predictions.label_ids
+    if isinstance(logits, tuple) or isinstance(labels, tuple):
+        raise NotImplementedError("This function does not support tuple predictions")
 
-    def compute_metrics(eval_pred) -> dict[str, float]:
-        logits, labels = eval_pred
-        predictions = np.argmax(logits, axis=-1)
+    predictions = np.argmax(logits, axis=-1)
 
-        probs = sc_special.softmax(logits, axis=-1)
-        if logits.shape[1] == 2:  # binary classification, only keep prob of label 1
-            probs = probs[:, -1]
+    probs = sc_special.softmax(logits, axis=-1)
+    if logits.shape[1] == 2:  # binary classification, only keep prob of label 1
+        probs = probs[:, -1]
 
-        scores: dict[str, float] = {}
-        for metric in metrics:
-            score = metric(predictions, labels, probs)
-            assert score is not None
-            scores.update(score)
-
-        return scores
-
-    return compute_metrics
-
-
-def join_metrics(*computers):
-    return lambda eval_pred: dict(
-        ChainMap(*[computer(eval_pred) for computer in computers])
-    )
+    return compute_metrics(probs, labels, metrics)

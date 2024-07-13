@@ -12,12 +12,13 @@ from transformers.trainer import Trainer
 from transformers.training_args import TrainingArguments
 from datasets.dataset_dict import DatasetDict
 
+import lass.utils
 import lass.metrics
-import lass.metrics.baseline
+import lass.metrics.stats
 import lass.data.splitting
 import lass.data.wrangling
 import lass.config as cfg
-from lass.metrics.baseline import analyse, merge
+from lass.metrics.stats import analyse, merge
 
 
 def train(
@@ -130,29 +131,18 @@ def train(
         "brier_score",
         "balanced_accuracy",
     ]
-    metrics_assessor = lass.metrics.hf.get_metric_computer(metrics)
 
-    # Add baseline metrics as well so we can merge the plots in wandb
-    labels = val_data["correct"]
-    dist_baseline = lass.metrics.baseline.baseline(val_data)
-    get_baseline = lass.metrics.hf.get_baseline_metrics
-    compute_metrics_plus = lass.metrics.hf.join_metrics(
-        metrics_assessor,
-        get_baseline(
-            labels, metrics, val_data["conf_normalized"], prefix="conf_normalized_"
-        ),
-        get_baseline(
-            labels, metrics, val_data["conf_absolute"], prefix="conf_absolute_"
-        ),
-        get_baseline(labels, metrics, dist_baseline, prefix="conf_distribution_"),
-    )
+    baselines = lass.metrics.baseline.get_baselines(val_data, metrics)
 
     trainer = Trainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,  # type: ignore
         eval_dataset=val_dataset,  # type: ignore
-        compute_metrics=compute_metrics_plus,
+        # Log baseline metrics use them as a reference in wandb
+        compute_metrics=lambda predictions: (
+            lass.metrics.compute_metrics_trainer(predictions, metrics) | baselines
+        ),
     )
 
     trainer.train()

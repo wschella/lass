@@ -82,10 +82,7 @@ def run(args: Args):
             use_wandb=True,
         ),
     )
-    print(args.is_test_run)
-    raise NotImplementedError(
-        "This code is not up to date with the latest version of LASS"
-    )
+
     if args.test_with:
         # This would look something like
         # "./artifact/assessors/q1indistribution/deberta-base_20210901120000/checkpoint-4000"
