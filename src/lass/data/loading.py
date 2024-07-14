@@ -1,5 +1,6 @@
 import dataclasses
-from typing import List, Literal
+import logging
+from typing import List, Literal, Tuple
 
 
 import bigbench.api.results as bb
@@ -112,26 +113,42 @@ def get_query_type(query) -> Literal["multiple_choice", "generative", "scoring"]
         raise ValueError(f"Unknown query class: {query.__class__}")
 
 
-def remove_duplicate_queries(df):
+def remove_duplicate_queries(df: pd.DataFrame) -> pd.DataFrame:
     """
     For the tasks that have both a multiple_choice and a scoring_generative query_type,
     remove one of them.
     """
-    raise NotImplementedError("Does not work with population data.")
+    if df[["model_name", "model_family"]].nunique().max() > 1:
+        logging.warning(
+            "Data contains multiple models. Dropping duplicate queries based on performance of best model."
+        )
+
+    if "128b" not in df.model_name.unique():
+        raise ValueError(
+            "Data does not contain 128b model. This is unexpected. Are you sure?"
+        )
+
+    # First select the runs for the best performing (overal!) model
+    best: Tuple[str, str] = (
+        df.groupby(["model_name", "model_family"]).correct.mean().idxmax()
+    )  # type: ignore
+    df_best = df.query(f"model_name == '{best[0]}' and model_family == '{best[1]}'")
 
     # Find the tasks that have both a multiple_choice and a scoring_generative query_type
-    tasks_with_both = df[["task", "query_type"]].groupby("task").query_type.nunique()
+    tasks_with_both = df_best.groupby(["task", "query_type"]).query_type.nunique()
     tasks_with_both = tasks_with_both[tasks_with_both == 2].index
 
     # Iterate over the tasks and decide which query_type to drop (get a list of pairs (task, query_type))
     queries_to_drop = [
-        (task, decide_which_query_to_drop(df.query("task == @task")))
+        (task, decide_which_query_to_drop(df_best.query(f"task == '{task}'")))
         for task in tasks_with_both
     ]
 
     # Drop the queries
     for task, query_type in queries_to_drop:
-        df = df.drop(df.query("task == @task and query_type == @query_type").index)
+        df = df.drop(
+            df.query(f"task == '{task}' and query_type == '{query_type}'").index
+        )
 
     return df
 

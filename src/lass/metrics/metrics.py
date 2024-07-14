@@ -118,16 +118,12 @@ def compute_metrics(
 
 
 def compute_metrics_trainer(
-    predictions: EvalPrediction, metric_names: list[str]
+    predictions: EvalPrediction, metrics: list[str]
 ) -> dict[str, float]:
-    metrics = [METRICS[metric] for metric in metric_names]
-
     logits = predictions.predictions
     labels = predictions.label_ids
     if isinstance(logits, tuple) or isinstance(labels, tuple):
         raise NotImplementedError("This function does not support tuple predictions")
-
-    predictions = np.argmax(logits, axis=-1)
 
     probs = sc_special.softmax(logits, axis=-1)
     if logits.shape[1] == 2:  # binary classification, only keep prob of label 1

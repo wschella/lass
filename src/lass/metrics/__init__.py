@@ -1,5 +1,4 @@
 from lass.metrics import metrics as metrics
-from lass.metrics import pandas as pandas
 from lass.metrics import brier as brier
 from lass.metrics import stats as stats
 from lass.metrics import baseline as baseline

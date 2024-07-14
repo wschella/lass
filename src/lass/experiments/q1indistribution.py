@@ -40,9 +40,11 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--is-test-run", action="store_true", default=False)
     parser.add_argument(
-        "--test_with",
+        "--test-run", action="store_true", default=False, dest="is_test_run"
+    )
+    parser.add_argument(
+        "--test-with",
         type=Path,
     )
     parser.add_argument("--shots", type=int, nargs="+", default=None)
@@ -145,6 +147,7 @@ def run(args: Args):
         metrics = {k: v["metrics"] for k, v in results_per_task.items()}
         json.dump(metrics, f, indent=2)
     # with open(csv_output_dir / "predictions_per_task.json", "w") as f:
+    # These are Tensors, need to turn into lists?
     #     predictions = {
     #         k: (v["logits"], v["labels"]) for k, v in results_per_task.items()
     #     }

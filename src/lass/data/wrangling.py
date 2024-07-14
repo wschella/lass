@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Union, Literal, cast
+from typing import Any, Tuple, Union, Literal, cast
 
 import pandas as pd
 import numpy as np
@@ -15,8 +15,8 @@ def wrangle(
 ) -> pd.DataFrame:
     df = binarize(df)
     df = augment(df)
-    # df = clean(df)  # TODO: Still needed?
-    # df = remove_bad_tasks(df) Note: Will make the data be different for different models
+    df = clean(df)
+    df = remove_bad_tasks(df)
 
     df = prepend_extra_features(
         df,
@@ -41,7 +41,7 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
     """
     Clean the dataframe of samples that are not correct.
     """
-    single_target_mpc = df.query("task_type == 'mpc' and n_targets == 1").index
+    single_target_mpc = df.query("query_type == 'mpc' and n_targets == 1").index
     df = df.drop(single_target_mpc)
     logging.info(f"Dropped {len(single_target_mpc)} single-target MPC tasks")
     return df
@@ -50,8 +50,8 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
 def binarize(df: pd.DataFrame) -> pd.DataFrame:
     # Drop all samples that do not have binary correctness
     # We could also round instead of drop here
-    is_non_binary = (~df["correct"].isin([0.0, 1.0])).index
-    df = df.drop(is_non_binary)
+    is_non_binary = ~(df["correct"].isin([0.0, 1.0]))
+    df = df[~is_non_binary]
     logging.info(f"Dropped {len(is_non_binary)} samples with non-binary correctness")
 
     # and convert the labels to ints afterwards
@@ -66,20 +66,37 @@ def remove_bad_tasks(df: pd.DataFrame) -> pd.DataFrame:
     Note: This aggregates across models.
     Note: Data will look different for different models.
     """
+    if df[["model_name", "model_family"]].nunique().max() > 1:
+        logging.warning(
+            "Data contains multiple models. Dropping tasks  based on performance of best model."
+        )
+
+    print(df.model_name.unique())
+    if "128b" not in df.model_name.unique():
+        raise ValueError(
+            "Data does not contain 128b model. This is unexpected. Are you sure?"
+        )
+
+    # First select the runs for the best performing (overal!) model
+    best: Tuple[str, str] = (
+        df.groupby(["model_name", "model_family"]).correct.mean().idxmax()
+    )  # type: ignore
+    df_best = df.query(f"model_name == '{best[0]}' and model_family == '{best[1]}'")
+
     # For MPC tasks, the threshold is random chance + 0.05
     # with random chance being 1/n_targets
-    mpc_perf = df.query("task_type == 'mpc'").groupby("task_name").mean()
+    mpc_perf = df_best.query("query_type == 'mpc'").groupby("task").mean()
     bad_mpc_tasks = mpc_perf[
         mpc_perf["correct"] < 1 / mpc_perf["n_targets"] + 0.05
     ].index
-    df = df[~df["task_name"].isin(bad_mpc_tasks)]
+    df = df[~df["task"].isin(bad_mpc_tasks)]
 
     # For generative tasks, the threshold is 0.05
-    gen_tasks = (
-        df.query("task_type == 'generative'").groupby("task_name")["correct"].mean()
+    gen_perf = (
+        df_best.query("query_type == 'generative'").groupby("task")["correct"].mean()
     )
-    bad_gen_tasks = gen_tasks[gen_tasks < 0.05].index
-    df = df[~df["task_name"].isin(bad_gen_tasks)]
+    bad_gen_tasks = gen_perf[gen_perf < 0.05].index
+    df = df[~df["task"].isin(bad_gen_tasks)]
     logging.info(f"Removed {len(bad_gen_tasks)} generative tasks with low performance")
     return df
 
