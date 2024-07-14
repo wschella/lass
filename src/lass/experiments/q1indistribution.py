@@ -136,29 +136,27 @@ def run(args: Args):
     results = lass.test.test(test, model, config.model)
 
     # Save predictions and metrics
+    dumpable = lambda r: {"logits": r.logits.tolist(), "labels": r.labels.tolist()}
     with open(csv_output_dir / "metrics.json", "w") as f:
-        json.dump(results["metrics"], f, indent=2)
-    # with open(csv_output_dir / "predictions.json", "w") as f:
-    # json.dump((results["logits"], results["labels"]), f)
+        json.dump(results.metrics, f, indent=2)
+    with open(csv_output_dir / "predictions.json", "w") as f:
+        json.dump(dumpable(results), f)
 
     # Save predictions and metrics per task
     results_per_task = lass.test.test_per_task(test, model, config.model)
     with open(csv_output_dir / "metrics_per_task.json", "w") as f:
-        metrics = {k: v["metrics"] for k, v in results_per_task.items()}
+        metrics = {k: v.metrics for k, v in results_per_task.items()}
         json.dump(metrics, f, indent=2)
-    # with open(csv_output_dir / "predictions_per_task.json", "w") as f:
-    # These are Tensors, need to turn into lists?
-    #     predictions = {
-    #         k: (v["logits"], v["labels"]) for k, v in results_per_task.items()
-    #     }
-    #     json.dump(predictions, f)
+    with open(csv_output_dir / "predictions_per_task.json", "w") as f:
+        predictions = {k: dumpable(v) for k, v in results_per_task.items()}
+        json.dump(predictions, f)
 
     # Copy this dir to "latest" dir as well
     latest_dir = csv_output_dir.parent / "latest"
     latest_dir.mkdir(parents=True, exist_ok=True)
     shutil.copytree(csv_output_dir, latest_dir)
 
-    print(results["metrics"])
+    print(results.metrics)
 
 
 if __name__ == "__main__":

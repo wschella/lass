@@ -52,7 +52,7 @@ def binarize(df: pd.DataFrame) -> pd.DataFrame:
     # We could also round instead of drop here
     is_non_binary = ~(df["correct"].isin([0.0, 1.0]))
     df = df[~is_non_binary]
-    logging.info(f"Dropped {len(is_non_binary)} samples with non-binary correctness")
+    logging.info(f"Dropped {is_non_binary.sum()} samples with non-binary correctness")
 
     # and convert the labels to ints afterwards
     df.loc[:, "correct"] = df["correct"].astype(int)

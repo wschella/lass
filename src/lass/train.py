@@ -55,7 +55,7 @@ def train(
     stats = merge(analyse(train_data), analyse(val_data), "train", "val")
     hfify = lass.data.wrangling.huggingfaceify
     dataset = DatasetDict({"train": hfify(train_data), "val": hfify(val_data)})
-    print(dataset["train"][0])
+    # print(dataset["train"][0])
 
     # Tokenize dataset
     logging.info("Starting tokenization")

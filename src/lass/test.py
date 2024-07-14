@@ -1,9 +1,11 @@
+from dataclasses import dataclass
 import os
 import logging
 from pathlib import Path
-from typing import Union
+from typing import Any, Union
 from pprint import pprint
 
+import numpy as np
 import pandas as pd
 from transformers.models.auto.modeling_auto import AutoModelForSequenceClassification
 from transformers.trainer import Trainer
@@ -16,19 +18,27 @@ import lass.metrics.stats
 from lass.metrics.stats import analyse, merge
 
 
+@dataclass
+class TestResults:
+    data: pd.DataFrame
+    logits: np.ndarray
+    labels: np.ndarray
+    metrics: dict[str, Any]
+
+
 def test(
     test_data: pd.DataFrame,
     model_loc: Union[Path, Module],  # Can be location, or the actual model
     model_name: str,
     max_sequence_length: int = 512,
-):
+) -> TestResults:
     if type(model_loc) in [str, Path, bytes]:
         assert Path(model_loc).exists()  # type: ignore
 
     # Log some stats & examples
-    stats = merge({}, analyse(test_data), "train", "test")
-    pprint(stats)
-    print(test_data.head(1))
+    # stats = merge({}, analyse(test_data), "train", "test")
+    # pprint(stats)
+    # print(test_data.head(1))
 
     if type(model_loc) in [str, Path, bytes]:
         model: Module = AutoModelForSequenceClassification.from_pretrained(
@@ -69,13 +79,11 @@ def test(
 
     # Get Results
     logits, labels, metrics_ = dummy_trainer.predict(test_hf_tokenized)
+    assert isinstance(logits, np.ndarray)
+    assert isinstance(labels, np.ndarray)
+    assert metrics_ is not None
 
-    return {
-        "data": test_data,
-        "logits": logits,
-        "labels": labels,
-        "metrics": metrics_,
-    }
+    return TestResults(test_data, logits, labels, metrics_)
 
 
 def test_per_task(
@@ -83,7 +91,7 @@ def test_per_task(
     model_loc: Union[Path, Module],  # Can be location, or the actual model
     model_name: str,
     max_sequence_length: int = 512,
-):
+) -> dict[str, TestResults]:
     tasks = {}
     for task_name in test_data.task.unique():
         task = test_data.query(f"task == '{task_name}'")
