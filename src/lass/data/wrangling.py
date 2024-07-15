@@ -71,7 +71,6 @@ def remove_bad_tasks(df: pd.DataFrame) -> pd.DataFrame:
             "Data contains multiple models. Dropping tasks  based on performance of best model."
         )
 
-    print(df.model_name.unique())
     if "128b" not in df.model_name.unique():
         raise ValueError(
             "Data does not contain 128b model. This is unexpected. Are you sure?"
@@ -85,15 +84,18 @@ def remove_bad_tasks(df: pd.DataFrame) -> pd.DataFrame:
 
     # For MPC tasks, the threshold is random chance + 0.05
     # with random chance being 1/n_targets
-    mpc_perf = df_best.query("query_type == 'mpc'").groupby("task").mean()
+    mpc_perf = df_best.query("query_type == 'multiple_choice'").groupby("task").mean()
     bad_mpc_tasks = mpc_perf[
         mpc_perf["correct"] < 1 / mpc_perf["n_targets"] + 0.05
     ].index
     df = df[~df["task"].isin(bad_mpc_tasks)]
+    logging.info(f"Removed {len(bad_mpc_tasks)} MPC tasks with low performance")
 
     # For generative tasks, the threshold is 0.05
     gen_perf = (
-        df_best.query("query_type == 'generative'").groupby("task")["correct"].mean()
+        df_best.query("query_type == 'scoring_generative'")
+        .groupby("task")["correct"]
+        .mean()
     )
     bad_gen_tasks = gen_perf[gen_perf < 0.05].index
     df = df[~df["task"].isin(bad_gen_tasks)]
