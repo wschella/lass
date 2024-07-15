@@ -14,7 +14,9 @@ def load(data_spec: LogLoaderArgs, is_test_run: bool = False) -> pd.DataFrame:
     if is_test_run:
         data_spec = dataclasses.replace(data_spec, tasks="pipeline-test")
     loader = LogLoader(data_spec)
+    logging.info(f"Started data loading")
     df = to_dataframe(loader)
+    logging.info(f"Finished data loading")
     df = remove_duplicate_queries(df)
     return df
 
