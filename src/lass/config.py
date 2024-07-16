@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from pathlib import Path
+import dataclasses
 from typing import Any, Dict, Optional
 
 import lass.data
@@ -31,9 +31,10 @@ class Config:
     data_spec: lass.log_handling.LogLoaderArgs
     model: str
     split_type: lass.data.splitting.SplitType
-    split_fraction: float
+    test_fraction: float
     include_model_in_input: bool
     include_n_targets_in_input: bool
+    filter_bad_tasks: bool
     hypers: HyperParams
     log_info: LogInfo
 
@@ -54,11 +55,6 @@ HYPER_DEFAULT = HyperParams(
     extra={},
 )
 
-HYPER_DEFAULT_REDUCED_MEM = HyperParams(
-    batch_size=16,
-    gradient_accumulation_steps=2,
-    n_epochs=6,
-    warmup_steps=3000,
-    learning_rate=2e-5,
-    extra={},
+HYPER_DEFAULT_REDUCED_MEM = dataclasses.replace(
+    HYPER_DEFAULT, batch_size=16, gradient_accumulation_steps=2
 )

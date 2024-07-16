@@ -10,6 +10,5 @@ Due to the use of Git LFS & Git submodules, mixing both Conda and Poetry, and th
 2. Clone this repo. Use `git clone --recursive git@github.com:wschella/lass.git` to also immediately clone the BIG-bench submodule.
 3. Pull in BIG-bench data: `cd lass; cd bigbench; git lfs install; git lfs pull; cd -`.
 4. Initialize the Conda environment.yml with `conda env create --prefix .venv -f environment.yml` (or however you prefer).
-5. Remove all dependencies from BIG-bench, since we really only care about their (no-deps) API and data: `echo -n > bigbench/requirements.txt`.
-6. `poetry install` to install all extra dependencies.
-7. Decompress all instance data with `./scripts/decompress.sh` (UNIX only, requires `parallel` and `lrzip` to be installed.)
+5. `poetry install` to install all extra dependencies.
+6. Decompress all instance data with `./scripts/decompress.sh` (UNIX only, requires `parallel` and `lrzip` to be installed.)

@@ -3,7 +3,6 @@ import os
 import logging
 from pathlib import Path
 from typing import Any, Union
-from pprint import pprint
 
 import numpy as np
 import pandas as pd
@@ -15,7 +14,6 @@ from torch.nn.modules.module import Module
 import lass.data.wrangling
 import lass.metrics
 import lass.metrics.stats
-from lass.metrics.stats import analyse, merge
 
 
 @dataclass
@@ -82,6 +80,9 @@ def test(
     assert isinstance(logits, np.ndarray)
     assert isinstance(labels, np.ndarray)
     assert metrics_ is not None
+
+    # Add instance count to metrics
+    metrics_["instance_count"] = len(test_data)
 
     return TestResults(test_data, logits, labels, metrics_)
 

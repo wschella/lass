@@ -114,6 +114,7 @@ def compute_metrics(
         # Most metrics use the probabilities, but some (like accuracy) need a decision (e.g. conf > 0.5)
         score = metric(predictions > 0.5, labels, predictions)
         assert score is not None
+        scores |= score
     return scores
 
 

@@ -1,3 +1,6 @@
+# Slurm logs
+X*.out
+
 artifacts/*
 !artifacts/.gitkeep
 !artifacts/logs/.gitkeep
@@ -5,6 +8,8 @@ artifacts/*
 notebooks/test_trainer/
 notebooks/wandb/
 wandb/
+
+.vscode 
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

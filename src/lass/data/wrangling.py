@@ -10,13 +10,15 @@ from datasets.dataset_dict import DatasetDict
 
 def wrangle(
     df: pd.DataFrame,
-    include_model_in_input: bool = False,
-    include_n_targets_in_input: bool = True,
+    include_model_in_input: bool,
+    include_n_targets_in_input: bool,
+    filter_bad_tasks: bool,
 ) -> pd.DataFrame:
     df = binarize(df)
     df = augment(df)
     df = clean(df)
-    df = remove_bad_tasks(df)
+    if filter_bad_tasks:
+        df = remove_bad_tasks(df)
 
     df = prepend_extra_features(
         df,

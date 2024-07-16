@@ -71,7 +71,7 @@ def run(args: Args):
             query_types=["multiple_choice", "scoring", "generative"],
         ),
         model="microsoft/deberta-v3-base",
-        split_type="instance",
+        split_type="task",
         test_fraction=0.2,
         include_model_in_input=False,
         include_n_targets_in_input=False,
@@ -80,9 +80,11 @@ def run(args: Args):
         if args.epochs is None
         else replace(cfg.HYPER_DEFAULT_REDUCED_MEM, epochs=args.epochs),
         log_info=cfg.LogInfo(
-            output_dir=str(artifacts / "assessors" / "q1indistribution"),
+            output_dir=str(artifacts / "assessors" / "q2outofdistribution"),
             model_alias="deberta-base",
-            log_group="q1indistribution" if not args.is_test_run else "pipeline-test",
+            log_group="q2outofdistribution"
+            if not args.is_test_run
+            else "pipeline-test",
             use_wandb=True,
         ),
     )
