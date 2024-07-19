@@ -1,12 +1,10 @@
 import argparse
-from copy import deepcopy
 import logging
 from dataclasses import dataclass, replace
 
 # autopep8: off
 import os
 from pathlib import Path
-import shutil
 from typing import Optional
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -17,8 +15,9 @@ import lass.data
 import lass.train
 import lass.test
 import lass.config as cfg
-import lass.experiments.shared as shared
 from lass.log_handling import LogLoaderArgs
+
+import lass.experiments.shared as shared
 
 
 @dataclass
@@ -54,10 +53,6 @@ def main():
 
 
 def run(args: Args):
-    """
-    We only need to train the task specific assessors here.
-    The multi-task model will be trained in Q1
-    """
     artifacts = Path("./artifacts")
 
     config = cfg.Config(
@@ -66,25 +61,36 @@ def run(args: Args):
         data_spec=LogLoaderArgs(
             logdir="artifacts/logs",
             tasks="paper-full",
+            # tasks=[
+            #     "cause_and_effect",  # An MPC task
+            #     "mult_data_wrangling",  # A generative task with exact_string_match
+            # ],
             model_families=["BIG-G T=0"],
             model_sizes=["128b"],
-            shots=[3] if args.shots is None else args.shots,
-            query_types=["multiple_choice", "scoring", "generative"],
+            shots=[0] if args.shots is None else args.shots,
+            query_types=["multiple_choice"],
         ),
         model="microsoft/deberta-v3-base",
         split_type="instance",
         test_fraction=0.2,
         include_model_in_input=False,
         include_n_targets_in_input=False,
-        filter_bad_tasks=True,
-        hypers=cfg.HYPER_DEFAULT_REDUCED_MEM
-        if args.epochs is None
-        else replace(cfg.HYPER_DEFAULT_REDUCED_MEM, epochs=args.epochs),
+        filter_bad_tasks=False,
+        hypers=cfg.HyperParams(
+            batch_size=16,
+            gradient_accumulation_steps=2,
+            n_epochs=6,
+            learning_rate=2e-5,
+            warmup_steps=3000,
+            extra={},
+        ),
         log_info=cfg.LogInfo(
-            output_dir=str(artifacts / "assessors" / "q4multitask"),
+            output_dir=str(artifacts / "assessors" / "xtra_reproduce_rev1_q1"),
             model_alias="deberta-base",
-            log_group="q4multitask" if not args.is_test_run else "pipeline-test",
-            use_wandb=False if args.is_test_run else True,
+            log_group=(
+                "xtra_reproduce_rev1_q1" if not args.is_test_run else "pipeline-test"
+            ),
+            use_wandb=True,
         ),
     )
 
@@ -100,55 +106,28 @@ def run(args: Args):
         include_n_targets_in_input=config.include_n_targets_in_input,
         filter_bad_tasks=config.filter_bad_tasks,
     )
-    print(sorted(list(data["task"].unique())))
     train, test = lass.data.splitting.split(
         data, config.split_type, config.test_fraction, config.seed
     )
 
-    tasks: list[str] = sorted(list(data["task"].unique()))
-    print(tasks)
-    models = {}
-
-    # Just load existing models
+    # Just load existing model
     if args.test_with:
-        # We can't use specific checkpoints in this case, so just pick the latest
-        model_output_dir = args.test_with
-        model_id_timed = model_output_dir.name
-        for task in tasks:
-            models[task] = shared.latest_checkpoint(model_output_dir / task)
+        model = args.test_with
+        model_id_timed = model.parent.name
     # Actually train a new model
     else:
-        model_id, model_id_timed = shared.make_model_id(config)
+        _, model_id_timed = shared.make_model_id(config)
         model_output_dir = Path(config.log_info.output_dir) / model_id_timed
         shared.save_config(config, model_output_dir)
-
-        for task in tasks:
-            cfg_task = deepcopy(config)
-            cfg_task.data_spec.tasks = [task]
-            cfg_task.log_info.use_wandb = (  # Only log the last task in wandb to avoid spamming
-                False if task != tasks[-1] else config.log_info.use_wandb
-            )
-
-            # Restrict data to the task
-            train_task = train[train["task"] == task]
-            test_task = test[test["task"] == task]
-
-            # Have a separate output dir for each task
-            model_task_output_dir = model_output_dir / task
-            cfg_task.log_info.output_dir = str(model_task_output_dir)
-            shared.save_config(config, model_task_output_dir)
-
-            # We can't keep the model in memory, otherwise we run out.
-            _model = lass.train.train(
-                train_task,
-                test_task,
-                cfg_task.model,
-                hypers=config.hypers,
-                log_info=cfg_task.log_info,
-                config=cfg_task,
-                is_test_run=args.is_test_run,
-            )
-            models[task] = shared.latest_checkpoint(model_task_output_dir)
+        model = lass.train.train(
+            train,
+            test,
+            config.model,
+            hypers=config.hypers,
+            log_info=replace(config.log_info, output_dir=model_output_dir),
+            config=config,
+            is_test_run=args.is_test_run,
+        )
 
     # Copy config to CSV output dir
     csv_output_dir = (
@@ -157,15 +136,14 @@ def run(args: Args):
     shared.save_config(config, csv_output_dir)
 
     # Gather test predictions
-    results = {}
-    print(tasks)
-    for task in tasks:
-        model = models[task]
-        test_task = test[test["task"] == task]
-        results[task] = lass.test.test(test_task, model, config.model)
-    shared.dump_results_per_task(results, csv_output_dir)
+    results = lass.test.test(test, model, config.model)
+    shared.dump_results(results, csv_output_dir)
 
-    print({task: results[task].metrics for task in tasks})
+    # Save predictions and metrics per task
+    results_per_task = lass.test.test_per_task(test, model, config.model)
+    shared.dump_results_per_task(results_per_task, csv_output_dir)
+
+    print(results.metrics)
     print("Done!")
 
 

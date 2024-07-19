@@ -37,6 +37,7 @@ class Config:
     filter_bad_tasks: bool
     hypers: HyperParams
     log_info: LogInfo
+    extra: Dict[str, Any] = dataclasses.field(default_factory=dict)
 
     @staticmethod
     def from_dict(d: Dict[str, Any]) -> "Config":

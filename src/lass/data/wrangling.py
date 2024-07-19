@@ -1,11 +1,16 @@
+import dataclasses
 import logging
-from typing import Any, Tuple, Union, Literal, cast
+from typing import Any, Optional, Tuple, Union, Literal, cast
 
 import pandas as pd
 import numpy as np
 from transformers.models.auto.tokenization_auto import AutoTokenizer
 from datasets.arrow_dataset import Dataset
 from datasets.dataset_dict import DatasetDict
+
+import torch
+from transformers.tokenization_utils_base import PreTrainedTokenizerBase
+from transformers.utils.generic import PaddingStrategy
 
 
 def wrangle(
@@ -144,6 +149,23 @@ def huggingfaceify(df: pd.DataFrame) -> Dataset:
     return Dataset.from_pandas(df_hf, preserve_index=False)
 
 
+def huggingfaceify_original(df: pd.DataFrame) -> Dataset:
+    """
+    Prepare a dataframe of BigBench samples for use with HuggingFace transformers.
+    Solve the original task, instead of failure prediction.
+    """
+    find_label = lambda row: max(
+        ((idx, row.target_values[target]) for idx, target in enumerate(row.targets)),
+        key=lambda x: x[1],
+    )[0]
+    df_hf = pd.DataFrame()
+    df_hf["text"] = df.input
+    df_hf["options"] = df.targets
+    df_hf["label"] = df.apply(find_label, axis=1)
+    # Watch out for those with multiple correct labels.
+    return Dataset.from_pandas(df_hf, preserve_index=False)
+
+
 def huggingfaceify_splits(train: pd.DataFrame, test: pd.DataFrame) -> DatasetDict:
     ds = DatasetDict()
     ds["train"] = huggingfaceify(train)
@@ -171,6 +193,43 @@ def tokenize(
     return ds.map(tokenize_function, batched=True)
 
 
+def tokenize_mpc(
+    ds: Union[Dataset, DatasetDict],
+    model_name: str,
+    max_sequence_length: int,
+    n_targets: int,
+    truncation_side: Union[Literal["left"], Literal["right"]] = "right",
+) -> Any:
+    tokenizer = _get_tokenizer(model_name, truncation_side=truncation_side)
+
+    def preprocess_function(examples):
+        # Create a 'text' context for each option
+        texts = [[text] * n_targets for text in examples["text"]]
+        options = examples["options"]
+
+        # Flatten the lists
+        texts = sum(texts, [])
+        options = sum(options, [])
+
+        # Tokenize the flattened representations
+        tokenized_examples = tokenizer(
+            texts,
+            options,
+            truncation=True,
+            padding="max_length",
+            max_length=max_sequence_length,
+        )
+
+        # Un-flatten the lists
+        values = {
+            k: [v[i : i + n_targets] for i in range(0, len(v), n_targets)]
+            for k, v in tokenized_examples.items()
+        }
+        return examples | values
+
+    return ds.map(preprocess_function, batched=True)
+
+
 def _get_tokenizer(
     model_name: str, truncation_side: Union[Literal["left"], Literal["right"]] = "right"
 ) -> Any:
@@ -182,51 +241,3 @@ def _get_tokenizer(
         tokenizer.pad_token = tokenizer.eos_token
 
     return tokenizer
-
-
-def truncate(input: pd.Series, model_name: str, max_sequence_length: int) -> pd.Series:
-    ds = Dataset.from_pandas(input.to_frame("text"))
-    truncated_ds = truncate_(ds, model_name, max_sequence_length)
-
-    return cast(pd.DataFrame, truncated_ds.to_pandas())["text"]
-
-
-def truncate_(input: Dataset, model_name: str, max_sequence_length: int):
-    """
-    Encoding can be a destructive process [1], so we work with offset_mapping to determine
-    the character indexes of the original string mapping to the last token.
-
-    [1] https://github.com/huggingface/tokenizers/issues/826#issuecomment-966082496
-    """
-
-    tokenizer = _get_tokenizer(model_name)
-
-    def truncate(batch):
-        tokens = tokenizer(
-            batch["text"],
-            padding=False,
-            truncation=True,
-            return_offsets_mapping=True,
-            max_length=max_sequence_length,
-        )
-        # Expected shape here is [batch size, sequence length (in tokens), 2]
-        # but first dimension is a list, second a list, and third a tuple
-        # We take the previous to last for each offset mapping, and take the
-        # end off the span tuple.
-        lengths = [l[-2][1] for l in tokens["offset_mapping"]]
-
-        # We use `amax` as a trick to find the last non-zero offset mapping.
-        # Array dimensions are [batch size, sequence length (in tokens), 2],
-        # where the last dimension is [start, end] of the token (referring to index in the string).
-        # With [:,:,-1], we make it [batch size, sequence length], taking only the end offset of the token.
-        # Then we take the max of each sequence, producing batch_size numbers.
-        # print(np.array(offset_mapping))
-        # lengths = np.amax(offset_mapping[:,:,-1], axis=1) # type: ignore
-
-        assert len(lengths) == len(batch["text"])
-
-        # Now we cut all the strings
-        texts = [text[:end] for text, end in zip(batch["text"], lengths)]
-        return {"text": texts}
-
-    return input.map(truncate, batched=True)

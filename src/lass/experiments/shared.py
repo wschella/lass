@@ -73,6 +73,11 @@ def dump_results_per_task(
         json.dump(predictions, f)
 
 
+def dump_as_json(obj, path: Path):
+    with open(path, "w") as f:
+        json.dump(obj, f, indent=2)
+
+
 def latest_checkpoint(dir: Path) -> Path:
     """
     Find the latest checkpoint in a directory.

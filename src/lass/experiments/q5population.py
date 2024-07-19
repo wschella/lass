@@ -162,6 +162,7 @@ def run(args: Args):
     shared.dump_results_per_task(results_per_task_ft, csv_output_dir / "finetuned")
 
     print(results_ft.metrics)
+    print("Done!")
 
 
 if __name__ == "__main__":

@@ -1,11 +1,16 @@
+# Note: load and filter all data at the same time, so all shots have the same data (since  task filtering is performance based)
 import argparse
+from datetime import datetime
 import logging
+import platform
 from dataclasses import dataclass, replace
 
 # autopep8: off
 import os
 from pathlib import Path
 from typing import Optional
+
+import pandas as pd
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
@@ -15,17 +20,18 @@ import lass.data
 import lass.train
 import lass.test
 import lass.config as cfg
-from lass.log_handling import LogLoaderArgs
-
 import lass.experiments.shared as shared
+from lass.log_handling import LogLoaderArgs
 
 
 @dataclass
 class Args:
     seed: int
+    time: str
+    model: str
+    model_alias: str
     is_test_run: bool
     test_with: Path
-    shots: Optional[list[int]]
     epochs: Optional[int]
 
 
@@ -38,6 +44,10 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--time", type=str)
+    parser.add_argument("--model", type=str)
+    parser.add_argument("--model-alias", type=str)
+
     parser.add_argument(
         "--test-run", action="store_true", default=False, dest="is_test_run"
     )
@@ -45,7 +55,6 @@ def main():
         "--test-with",
         type=Path,
     )
-    parser.add_argument("--shots", type=int, nargs="+", default=None)
     parser.add_argument("--epochs", type=int, default=None)
     args_raw = parser.parse_args()
     args = Args(**vars(args_raw))
@@ -53,42 +62,47 @@ def main():
 
 
 def run(args: Args):
-    artifacts = Path("./artifacts")
+    """
+    This script needs to be run for every model.
+    We organize it like this so it can be more easily parallelized on an HPC,
+    and the rest of the code is more similar to the other experiments.
+    """
+    print(
+        f"Running {args.model} on {platform.node()} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    )
 
+    artifacts = Path("./artifacts")
     config = cfg.Config(
         seed=args.seed,
         is_test_run=args.is_test_run,
         data_spec=LogLoaderArgs(
             logdir="artifacts/logs",
             tasks="paper-full",
-            # tasks=[
-            #     "cause_and_effect",  # An MPC task
-            #     "mult_data_wrangling",  # A generative task with exact_string_match
-            # ],
             model_families=["BIG-G T=0"],
             model_sizes=["128b"],
-            shots=[0] if args.shots is None else args.shots,
-            query_types=["multiple_choice"],
+            shots=[3],
+            query_types=["multiple_choice", "scoring", "generative"],
         ),
-        model="microsoft/deberta-v3-base",
+        model=args.model,
         split_type="instance",
         test_fraction=0.2,
         include_model_in_input=False,
         include_n_targets_in_input=False,
-        filter_bad_tasks=False,
-        hypers=cfg.HyperParams(
-            batch_size=16,
-            gradient_accumulation_steps=2,
-            n_epochs=6,
-            learning_rate=2e-5,
-            warmup_steps=3000,
-            extra={},
+        filter_bad_tasks=True,
+        hypers=(
+            cfg.HYPER_DEFAULT_REDUCED_MEM
+            if args.epochs is None
+            else replace(cfg.HYPER_DEFAULT_REDUCED_MEM, epochs=args.epochs)
         ),
         log_info=cfg.LogInfo(
-            output_dir=str(artifacts / "assessors" / "reproduce_rev1_q1"),
-            model_alias="deberta-base",
-            log_group="reproduce_rev1_q1" if not args.is_test_run else "pipeline-test",
-            use_wandb=True,
+            output_dir=str(artifacts / "assessors" / "xtra_architecture_selection"),
+            model_alias=args.model_alias,
+            log_group=(
+                "xtra_architecture_selection"
+                if not args.is_test_run
+                else "pipeline-test"
+            ),
+            use_wandb=True if not args.is_test_run else False,
         ),
     )
 
@@ -110,39 +124,39 @@ def run(args: Args):
 
     # Just load existing model
     if args.test_with:
-        model = args.test_with
-        model_id_timed = model.parent.name
+        model_output_dir = args.test_with.parent
     # Actually train a new model
     else:
-        _, model_id_timed = shared.make_model_id(config)
-        model_output_dir = Path(config.log_info.output_dir) / model_id_timed
+        model_output_dir = (
+            Path(config.log_info.output_dir) / args.time / args.model_alias
+        )
         shared.save_config(config, model_output_dir)
+
         model = lass.train.train(
             train,
             test,
             config.model,
             hypers=config.hypers,
-            log_info=replace(config.log_info, output_dir=model_output_dir),
+            log_info=replace(config.log_info, output_dir=str(model_output_dir)),
             config=config,
             is_test_run=args.is_test_run,
         )
 
     # Copy config to CSV output dir
     csv_output_dir = (
-        artifacts / "csv-results-new" / config.log_info.log_group / model_id_timed
+        artifacts
+        / "csv-results-new"
+        / config.log_info.log_group
+        / args.time
+        / args.model_alias
     )
     shared.save_config(config, csv_output_dir)
 
     # Gather test predictions
     results = lass.test.test(test, model, config.model)
     shared.dump_results(results, csv_output_dir)
-
-    # Save predictions and metrics per task
     results_per_task = lass.test.test_per_task(test, model, config.model)
     shared.dump_results_per_task(results_per_task, csv_output_dir)
 
     print(results.metrics)
-
-
-if __name__ == "__main__":
-    main()
+    print("Done!")

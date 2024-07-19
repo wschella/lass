@@ -135,6 +135,7 @@ def run(args: Args):
     shared.dump_results_per_task(results_per_task, csv_output_dir)
 
     print(results.metrics)
+    print("Done!")
 
 
 if __name__ == "__main__":

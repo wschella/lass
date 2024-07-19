@@ -142,6 +142,7 @@ def run(args: Args):
     # shutil.copytree(csv_output_dir, latest_dir)
 
     print(results.metrics)
+    print("Done!")
 
 
 if __name__ == "__main__":

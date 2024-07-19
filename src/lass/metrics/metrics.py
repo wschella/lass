@@ -104,7 +104,7 @@ METRICS = {
 
 
 def compute_metrics(
-    predictions: pd.Series | np.ndarray,
+    probs: pd.Series | np.ndarray,
     labels: pd.Series | np.ndarray,
     metrics: list,
 ) -> dict[str, float]:
@@ -112,7 +112,12 @@ def compute_metrics(
     scores = {}
     for metric in metrics:
         # Most metrics use the probabilities, but some (like accuracy) need a decision (e.g. conf > 0.5)
-        score = metric(predictions > 0.5, labels, predictions)
+        if isinstance(probs, np.ndarray) and probs.ndim > 1:
+            # This is the case when training for the original MPC task
+            predictions = np.argmax(probs, axis=1)
+        else:
+            predictions = probs > 0.5
+        score = metric(predictions, labels, probs)
         assert score is not None
         scores |= score
     return scores

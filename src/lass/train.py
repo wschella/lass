@@ -7,6 +7,7 @@ import wandb
 import pandas as pd
 
 from torch.nn.modules.module import Module
+from transformers.models.auto.modeling_auto import AutoModelForMultipleChoice
 from transformers.models.auto.modeling_auto import AutoModelForSequenceClassification
 from transformers.trainer import Trainer
 from transformers.training_args import TrainingArguments
@@ -35,6 +36,7 @@ def train(
     max_sequence_length: int = 512,
     truncation_side: Union[Literal["left"], Literal["right"]] = "right",
     finetune: Optional[Module] = None,
+    original_task: bool = False,
 ) -> Module:
     if is_test_run:
         print("Running in test mode")
@@ -51,16 +53,34 @@ def train(
 
     # Log some stats & examples
     stats = merge(analyse(train_data), analyse(val_data), "train", "val")
-    hfify = lass.data.wrangling.huggingfaceify
+
+    # Huggingfacify dataset
+    if original_task:
+        err_msg = "Task has variable number of targets. Unsupported."
+        assert train_data.n_targets.nunique() == 1, err_msg
+        assert val_data.n_targets.nunique() == 1, err_msg
+        hfify = lass.data.wrangling.huggingfaceify_original
+    else:
+        hfify = lass.data.wrangling.huggingfaceify
     dataset = DatasetDict({"train": hfify(train_data), "val": hfify(val_data)})
     # print(dataset["train"][0])
 
     # Tokenize dataset
     logging.info("Starting tokenization")
     os.environ["TOKENIZERS_PARALLELISM"] = "true"
-    tokenized_datasets: DatasetDict = lass.data.wrangling.tokenize(
-        dataset, model_name, max_sequence_length, truncation_side=truncation_side
-    )
+    if original_task:
+        n_targets: int = train_data.n_targets.iloc[0]
+        tokenized_datasets: DatasetDict = lass.data.wrangling.tokenize_mpc(
+            dataset,
+            model_name,
+            max_sequence_length,
+            n_targets=n_targets,
+            truncation_side=truncation_side,
+        )
+    else:
+        tokenized_datasets: DatasetDict = lass.data.wrangling.tokenize(
+            dataset, model_name, max_sequence_length, truncation_side=truncation_side
+        )
 
     train_dataset = tokenized_datasets["train"].shuffle(seed=config.seed)
     val_dataset = tokenized_datasets["val"]
@@ -100,9 +120,12 @@ def train(
     if finetune is not None:
         model = finetune
     else:
-        model = AutoModelForSequenceClassification.from_pretrained(
-            model_name, num_labels=2
-        )
+        if original_task:
+            model = AutoModelForMultipleChoice.from_pretrained(model_name)
+        else:
+            model = AutoModelForSequenceClassification.from_pretrained(
+                model_name, num_labels=2
+            )
 
     if model_name == "gpt2":
         model.config.pad_token_id = model.config.eos_token_id  # type: ignore
@@ -148,8 +171,16 @@ def train(
         "brier_score",
         "balanced_accuracy",
     ]
+    if original_task:
+        metrics = ["accuracy"]
+        metrics += ["roc_auc_multiclass"] if n_targets > 2 else ["roc_auc"]
 
-    baselines = lass.metrics.baseline.get_baselines(val_data, metrics)
+    if original_task:
+        # Get baselines does so for failure prediction task, e.g. considering the 'correct' as a label
+        # Does not work for original task.
+        baselines = {}
+    else:
+        baselines = lass.metrics.baseline.get_baselines(val_data, metrics)
 
     trainer = Trainer(
         model=model,

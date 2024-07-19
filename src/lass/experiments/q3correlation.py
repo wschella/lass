@@ -6,7 +6,6 @@ from dataclasses import dataclass, replace
 # autopep8: off
 import os
 from pathlib import Path
-import shutil
 from typing import Optional
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -55,8 +54,8 @@ def main():
 
 def run(args: Args):
     """
-    We only need to train the task specific assessors here.
-    The multi-task model will be trained in Q1
+    We only really need to train deberta's as subject models.
+    The task-specific assessors model results can come from Q4.
     """
     artifacts = Path("./artifacts")
 
@@ -68,8 +67,10 @@ def run(args: Args):
             tasks="paper-full",
             model_families=["BIG-G T=0"],
             model_sizes=["128b"],
+            # Should not matter, since only use the prompt here.
             shots=[3] if args.shots is None else args.shots,
-            query_types=["multiple_choice", "scoring", "generative"],
+            # No generative tasks, deberta can't handle it.
+            query_types=["multiple_choice"],
         ),
         model="microsoft/deberta-v3-base",
         split_type="instance",
@@ -77,14 +78,19 @@ def run(args: Args):
         include_model_in_input=False,
         include_n_targets_in_input=False,
         filter_bad_tasks=True,
-        hypers=cfg.HYPER_DEFAULT_REDUCED_MEM
-        if args.epochs is None
-        else replace(cfg.HYPER_DEFAULT_REDUCED_MEM, epochs=args.epochs),
+        hypers=cfg.HyperParams(
+            n_epochs=cfg.HYPER_DEFAULT.n_epochs if args.epochs is None else args.epochs,
+            warmup_steps=cfg.HYPER_DEFAULT.warmup_steps,
+            learning_rate=cfg.HYPER_DEFAULT.learning_rate,
+            batch_size=1,  # Some issues with padding and collation and whatnot.
+            gradient_accumulation_steps=cfg.HYPER_DEFAULT.batch_size,  # Accumulate to total batch size
+            extra=cfg.HYPER_DEFAULT.extra,
+        ),
         log_info=cfg.LogInfo(
-            output_dir=str(artifacts / "assessors" / "q4multitask"),
+            output_dir=str(artifacts / "assessors" / "q3correlation"),
             model_alias="deberta-base",
-            log_group="q4multitask" if not args.is_test_run else "pipeline-test",
-            use_wandb=False if args.is_test_run else True,
+            log_group="q3correlation" if not args.is_test_run else "pipeline-test",
+            use_wandb=True,
         ),
     )
 
@@ -100,7 +106,6 @@ def run(args: Args):
         include_n_targets_in_input=config.include_n_targets_in_input,
         filter_bad_tasks=config.filter_bad_tasks,
     )
-    print(sorted(list(data["task"].unique())))
     train, test = lass.data.splitting.split(
         data, config.split_type, config.test_fraction, config.seed
     )
@@ -122,6 +127,8 @@ def run(args: Args):
         model_output_dir = Path(config.log_info.output_dir) / model_id_timed
         shared.save_config(config, model_output_dir)
 
+        faulty_tasks = {}
+
         for task in tasks:
             cfg_task = deepcopy(config)
             cfg_task.data_spec.tasks = [task]
@@ -139,16 +146,25 @@ def run(args: Args):
             shared.save_config(config, model_task_output_dir)
 
             # We can't keep the model in memory, otherwise we run out.
-            _model = lass.train.train(
-                train_task,
-                test_task,
-                cfg_task.model,
-                hypers=config.hypers,
-                log_info=cfg_task.log_info,
-                config=cfg_task,
-                is_test_run=args.is_test_run,
-            )
-            models[task] = shared.latest_checkpoint(model_task_output_dir)
+            try:
+                _model = lass.train.train(
+                    train_task,
+                    test_task,
+                    cfg_task.model,
+                    hypers=config.hypers,
+                    log_info=cfg_task.log_info,
+                    config=cfg_task,
+                    is_test_run=args.is_test_run,
+                    original_task=True,
+                )
+                models[task] = shared.latest_checkpoint(model_task_output_dir)
+            except AssertionError as e:
+                if "Task has variable number of targets. Unsupported." in str(e):
+                    faulty_tasks[task] = "Variable number of targets"
+                else:
+                    raise e
+
+        shared.dump_as_json(faulty_tasks, model_output_dir / "faulty_tasks.json")
 
     # Copy config to CSV output dir
     csv_output_dir = (
@@ -160,12 +176,16 @@ def run(args: Args):
     results = {}
     print(tasks)
     for task in tasks:
+        if task in faulty_tasks:
+            continue
         model = models[task]
         test_task = test[test["task"] == task]
-        results[task] = lass.test.test(test_task, model, config.model)
+        results[task] = lass.test.test(
+            test_task, model, config.model, original_task=True
+        )
     shared.dump_results_per_task(results, csv_output_dir)
 
-    print({task: results[task].metrics for task in tasks})
+    print({task: results[task].metrics for task in tasks if task not in faulty_tasks})
     print("Done!")
 
 

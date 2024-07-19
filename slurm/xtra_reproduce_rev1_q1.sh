@@ -8,4 +8,4 @@
 BASE="."
 source ~/miniconda3/bin/activate "$BASE/.venv"
 
-python src/lass/experiments/reproduce_rev1_q1.py "$@"
+python src/lass/experiments/xtra_reproduce_rev1_q1.py "$@"
