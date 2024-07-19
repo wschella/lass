@@ -71,3 +71,14 @@ def dump_results_per_task(
     with open(dir / "predictions_per_task.json", "w") as f:
         predictions = {k: dumpable(v) for k, v in results.items()}
         json.dump(predictions, f)
+
+
+def latest_checkpoint(dir: Path) -> Path:
+    """
+    Find the latest checkpoint in a directory.
+    """
+    step = max(
+        int(p.name.split("-")[1])  # looks like checkpoint-4000
+        for p in dir.glob("checkpoint-*")
+    )
+    return dir / f"checkpoint-{step}"

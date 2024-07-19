@@ -38,7 +38,7 @@ def test(
     # pprint(stats)
     # print(test_data.head(1))
 
-    if type(model_loc) in [str, Path, bytes]:
+    if isinstance(model_loc, (Path, str, bytes)):
         model: Module = AutoModelForSequenceClassification.from_pretrained(
             model_loc, num_labels=2
         )

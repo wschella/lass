@@ -103,20 +103,21 @@ def run(args: Args):
         data, config.split_type, config.test_fraction, config.seed
     )
 
-    model_id, model_id_timed = shared.make_model_id(config)
-
     # Just load existing model
     if args.test_with:
         model = args.test_with
+        model_id_timed = model.parent.name
     # Actually train a new model
     else:
-        shared.save_config(config, Path(config.log_info.output_dir) / model_id_timed)
+        _, model_id_timed = shared.make_model_id(config)
+        model_output_dir = Path(config.log_info.output_dir) / model_id_timed
+        shared.save_config(config, model_output_dir)
         model = lass.train.train(
             train,
             test,
             config.model,
             hypers=config.hypers,
-            log_info=config.log_info,
+            log_info=replace(config.log_info, output_dir=str(model_output_dir)),
             config=config,
             is_test_run=args.is_test_run,
         )
@@ -136,9 +137,9 @@ def run(args: Args):
     shared.dump_results_per_task(results_per_task, csv_output_dir)
 
     # Copy this dir to "latest" dir as well
-    latest_dir = csv_output_dir.parent / "latest"
-    latest_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(csv_output_dir, latest_dir)
+    # latest_dir = csv_output_dir.parent / "latest"
+    # latest_dir.mkdir(parents=True, exist_ok=True)
+    # shutil.copytree(csv_output_dir, latest_dir)
 
     print(results.metrics)
 

@@ -61,10 +61,6 @@ def run(args: Args):
         data_spec=LogLoaderArgs(
             logdir="artifacts/logs",
             tasks="paper-full",
-            # tasks=[
-            #     "cause_and_effect",  # An MPC task
-            #     "mult_data_wrangling",  # A generative task with exact_string_match
-            # ],
             model_families=["BIG-G T=0"],
             model_sizes=["128b"],
             shots=[3] if args.shots is None else args.shots,
@@ -105,20 +101,21 @@ def run(args: Args):
         data, config.split_type, config.test_fraction, config.seed
     )
 
-    model_id, model_id_timed = shared.make_model_id(config)
-
     # Just load existing model
     if args.test_with:
         model = args.test_with
+        model_id_timed = model.parent.name
     # Actually train a new model
     else:
-        shared.save_config(config, Path(config.log_info.output_dir) / model_id_timed)
+        _, model_id_timed = shared.make_model_id(config)
+        model_output_dir = Path(config.log_info.output_dir) / model_id_timed
+        shared.save_config(config, model_output_dir)
         model = lass.train.train(
             train,
             test,
             config.model,
             hypers=config.hypers,
-            log_info=config.log_info,
+            log_info=replace(config.log_info, output_dir=str(model_output_dir)),
             config=config,
             is_test_run=args.is_test_run,
         )
@@ -136,11 +133,6 @@ def run(args: Args):
     # Save predictions and metrics per task
     results_per_task = lass.test.test_per_task(test, model, config.model)
     shared.dump_results_per_task(results_per_task, csv_output_dir)
-
-    # Copy this dir to "latest" dir as well
-    latest_dir = csv_output_dir.parent / "latest"
-    latest_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(csv_output_dir, latest_dir)
 
     print(results.metrics)
 

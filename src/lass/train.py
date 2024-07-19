@@ -34,15 +34,13 @@ def train(
     val_max_instances: Optional[int] = 20000,
     max_sequence_length: int = 512,
     truncation_side: Union[Literal["left"], Literal["right"]] = "right",
+    finetune: Optional[Module] = None,
 ) -> Module:
     if is_test_run:
         print("Running in test mode")
-        hypers.n_epochs = 1
-        hypers.extra["eval_steps"] = 5
-        hypers.extra["save_steps"] = 5
-        hypers.extra["logging_steps"] = 5
         train_max_instances = 200
         val_max_instances = 200
+        hypers.n_epochs = 1
         print(f"Tasks: {config.data_spec.tasks}\n n_epochs: {hypers.n_epochs}")
 
     # Sometimes we just want a little smaller datasets for speed
@@ -99,16 +97,32 @@ def train(
         wandb.config.stats = stats
 
     # Setup trainer
-    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
+    if finetune is not None:
+        model = finetune
+    else:
+        model = AutoModelForSequenceClassification.from_pretrained(
+            model_name, num_labels=2
+        )
 
     if model_name == "gpt2":
-        model.config.pad_token_id = model.config.eos_token_id
+        model.config.pad_token_id = model.config.eos_token_id  # type: ignore
+
+    # Make sure to do saving, logging, eval at least once
+    # -> Should be at least once every epoch, to prevent only logging overfitted models
+    # 500 is the default value in the Trainer
+    # Should always match or undershoot the number of steps
+    # Instances at the not fitting the batch might be dropped?
+    total_batch_size = hypers.batch_size * hypers.gradient_accumulation_steps
+    # n_opt_steps = hypers.n_epochs * (len(train_data) // total_batch_size)
+    n_opt_steps = len(train_data) // total_batch_size
+    x_every_steps = 500 if n_opt_steps > 500 else n_opt_steps
+    x_every_steps = max(x_every_steps, 1)
 
     default_args: Dict[str, Any] = {
         "output_dir": log_info.output_dir,
         "optim": "adamw_torch",
         "evaluation_strategy": "steps",
-        "report_to": "none" if is_test_run else "wandb",
+        "report_to": "wandb" if log_info.use_wandb else "none",
         "per_device_train_batch_size": hypers.batch_size,
         "per_device_eval_batch_size": hypers.batch_size,
         "gradient_accumulation_steps": hypers.gradient_accumulation_steps,
@@ -118,6 +132,9 @@ def train(
         # This combination saves models immediately, but only keeps the best and the last.
         "load_best_model_at_end": True,
         "save_total_limit": 1,
+        "save_steps": x_every_steps,
+        "eval_steps": x_every_steps,
+        "logging_steps": x_every_steps,
         "seed": config.seed,
     }
     training_args = TrainingArguments(**(default_args | hypers.extra))

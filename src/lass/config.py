@@ -58,3 +58,11 @@ HYPER_DEFAULT = HyperParams(
 HYPER_DEFAULT_REDUCED_MEM = dataclasses.replace(
     HYPER_DEFAULT, batch_size=16, gradient_accumulation_steps=2
 )
+
+HYPER_DEFAULT_REDUCED_MEM_2 = dataclasses.replace(
+    HYPER_DEFAULT, batch_size=8, gradient_accumulation_steps=4
+)
+
+HYPER_DEFAULT_REDUCED_MEM_3 = dataclasses.replace(
+    HYPER_DEFAULT, batch_size=4, gradient_accumulation_steps=8
+)

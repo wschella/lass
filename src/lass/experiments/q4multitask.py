@@ -6,6 +6,7 @@ from dataclasses import dataclass, replace
 # autopep8: off
 import os
 from pathlib import Path
+import shutil
 from typing import Optional
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -53,6 +54,10 @@ def main():
 
 
 def run(args: Args):
+    """
+    We only need to train the task specific assessors here.
+    The multi-task model will be trained in Q1
+    """
     artifacts = Path("./artifacts")
 
     config = cfg.Config(
@@ -62,24 +67,24 @@ def run(args: Args):
             logdir="artifacts/logs",
             tasks="paper-full",
             model_families=["BIG-G T=0"],
-            model_sizes=["4b", "8b", "27b", "128b"],
+            model_sizes=["128b"],
             shots=[3] if args.shots is None else args.shots,
             query_types=["multiple_choice", "scoring", "generative"],
         ),
         model="microsoft/deberta-v3-base",
         split_type="instance",
         test_fraction=0.2,
-        include_model_in_input=True,  #! Important, such that assessors can differentiate
+        include_model_in_input=False,
         include_n_targets_in_input=False,
         filter_bad_tasks=True,
         hypers=cfg.HYPER_DEFAULT_REDUCED_MEM
         if args.epochs is None
         else replace(cfg.HYPER_DEFAULT_REDUCED_MEM, epochs=args.epochs),
         log_info=cfg.LogInfo(
-            output_dir=str(artifacts / "assessors" / "q5population"),
+            output_dir=str(artifacts / "assessors" / "q4multitask"),
             model_alias="deberta-base",
-            log_group="q5population" if not args.is_test_run else "pipeline-test",
-            use_wandb=True,
+            log_group="q4multitask" if not args.is_test_run else "pipeline-test",
+            use_wandb=False if args.is_test_run else True,
         ),
     )
 
@@ -95,52 +100,55 @@ def run(args: Args):
         include_n_targets_in_input=config.include_n_targets_in_input,
         filter_bad_tasks=config.filter_bad_tasks,
     )
+    print(sorted(list(data["task"].unique())))
     train, test = lass.data.splitting.split(
         data, config.split_type, config.test_fraction, config.seed
     )
 
-    # Just load existing model
+    tasks: list[str] = sorted(list(data["task"].unique()))
+    print(tasks)
+    models = {}
+
+    # Just load existing models
     if args.test_with:
-        model = args.test_with
-        model_id_timed = model.parent.name
-        model_finetuned = shared.latest_checkpoint(args.test_with / "finetuned")
+        # We can't use specific checkpoints in this case, so just pick the latest
+        model_output_dir = args.test_with
+        model_id_timed = model_output_dir.name
+        for task in tasks:
+            models[task] = shared.latest_checkpoint(model_output_dir / task)
     # Actually train a new model
     else:
-        _, model_id_timed = shared.make_model_id(config)
+        model_id, model_id_timed = shared.make_model_id(config)
         model_output_dir = Path(config.log_info.output_dir) / model_id_timed
         shared.save_config(config, model_output_dir)
-        model = lass.train.train(
-            train,
-            test,
-            config.model,
-            hypers=config.hypers,
-            log_info=replace(config.log_info, output_dir=model_output_dir),
-            config=config,
-            is_test_run=args.is_test_run,
-        )
 
-        # Fine tune on largest model
-        model_output_dir_finetuned = model_output_dir / "finetuned"
-        config_finetuned = deepcopy(config)
-        config_finetuned.hypers.n_epochs = 2
-        config_finetuned.log_info.output_dir = str(model_output_dir_finetuned)
-        config_finetuned.log_info.log_group = config.log_info.log_group + "-finetuned"
+        for task in tasks:
+            cfg_task = deepcopy(config)
+            cfg_task.data_spec.tasks = [task]
+            cfg_task.log_info.use_wandb = (
+                False if task != tasks[-1] else config.log_info.use_wandb
+            )
 
-        # Note: Big assumption
-        largest_model = (config.data_spec.model_sizes or ["128b"])[-1]
-        train_ft = train[train.model_name == largest_model]
-        test_ft = test[test.model_name == largest_model]
+            # Restrict data to the task
+            train_task = train[train["task"] == task]
+            test_task = test[test["task"] == task]
 
-        model_finetuned = lass.train.train(
-            train_ft,
-            test_ft,
-            config_finetuned.model,
-            finetune=deepcopy(model),
-            hypers=config_finetuned.hypers,
-            log_info=config_finetuned.log_info,
-            config=config_finetuned,
-            is_test_run=args.is_test_run,
-        )
+            # Have a separate output dir for each task
+            model_task_output_dir = model_output_dir / task
+            cfg_task.log_info.output_dir = str(model_task_output_dir)
+            shared.save_config(config, model_task_output_dir)
+
+            # We can't keep the model in memory, otherwise we run out.
+            _model = lass.train.train(
+                train_task,
+                test_task,
+                cfg_task.model,
+                hypers=config.hypers,
+                log_info=cfg_task.log_info,
+                config=cfg_task,
+                is_test_run=args.is_test_run,
+            )
+            models[task] = shared.latest_checkpoint(model_task_output_dir)
 
     # Copy config to CSV output dir
     csv_output_dir = (
@@ -149,19 +157,15 @@ def run(args: Args):
     shared.save_config(config, csv_output_dir)
 
     # Gather test predictions
-    results = lass.test.test(test, model, config.model)
-    shared.dump_results(results, csv_output_dir)
-    results_per_task = lass.test.test_per_task(test, model, config.model)
-    shared.dump_results_per_task(results_per_task, csv_output_dir)
+    results = {}
+    print(tasks)
+    for task in tasks:
+        model = models[task]
+        test_task = test[test["task"] == task]
+        results[task] = lass.test.test(test_task, model, config.model)
+    shared.dump_results_per_task(results, csv_output_dir)
 
-    # Gather test predictions for finetuned model
-    shared.save_config(config_finetuned, csv_output_dir / "finetuned")
-    results_ft = lass.test.test(test, model_finetuned, config.model)
-    shared.dump_results(results_ft, csv_output_dir / "finetuned")
-    results_per_task_ft = lass.test.test_per_task(test, model_finetuned, config.model)
-    shared.dump_results_per_task(results_per_task_ft, csv_output_dir / "finetuned")
-
-    print(results_ft.metrics)
+    print({task: results[task].metrics for task in tasks})
 
 
 if __name__ == "__main__":

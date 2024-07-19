@@ -1,27 +1,23 @@
 import argparse
-import dataclasses
 import logging
-import json
 from dataclasses import dataclass, replace
-from datetime import datetime
 
 # autopep8: off
 import os
 from pathlib import Path
-import shutil
 from typing import Optional
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 # autopep8: on
 
-import torch
-
 import lass.data
 import lass.train
 import lass.test
 import lass.config as cfg
 from lass.log_handling import LogLoaderArgs
+
+import lass.experiments.shared as shared
 
 
 @dataclass
@@ -97,15 +93,9 @@ def run(args: Args):
     )
 
     if args.test_with:
-        # This would look something like
-        # "./artifact/assessors/q1indistribution/deberta-base_20210901120000/checkpoint-4000"
-        config_path = args.test_with.parent / "config.json"
-        with open(config_path, "r") as f:
-            config = cfg.Config.from_dict(json.load(f))
+        config = shared.load_config(args.test_with)
 
-    assert (
-        torch.cuda.is_available() and torch.cuda.device_count() > 0
-    ), "No CUDA device available"
+    shared.assert_GPU_available()
 
     data = lass.data.loading.load(config.data_spec, config.is_test_run)
     data = lass.data.wrangling.wrangle(
@@ -118,65 +108,38 @@ def run(args: Args):
         data, config.split_type, config.test_fraction, config.seed
     )
 
-    # Set specific model_id
-    model_id, _ = lass.train.make_model_id(config)
-    model_id_timed = f"{model_id}-{datetime.now().strftime('%m%d%H%M')}"
-
     # Just load existing model
     if args.test_with:
         model = args.test_with
-
-    # Actually train
+        model_id_timed = model.parent.name
+    # Actually train a new model
     else:
-        # Save config
-        output_dir = Path(config.log_info.output_dir) / model_id_timed
-        output_dir.mkdir(parents=True, exist_ok=True)
-        config.log_info.output_dir = str(output_dir)
-        with open(output_dir / "config.json", "w") as f:
-            json.dump(dataclasses.asdict(config), f, indent=2)
-
-        # Train
+        _, model_id_timed = shared.make_model_id(config)
+        model_output_dir = Path(config.log_info.output_dir) / model_id_timed
+        shared.save_config(config, model_output_dir)
         model = lass.train.train(
             train,
             test,
             config.model,
             hypers=config.hypers,
-            log_info=config.log_info,
+            log_info=replace(config.log_info, output_dir=model_output_dir),
             config=config,
             is_test_run=args.is_test_run,
         )
 
     # Copy config to CSV output dir
     csv_output_dir = (
-        artifacts / "csv-results-new" / "reproduce_rev1_q1" / model_id_timed
+        artifacts / "csv-results-new" / config.log_info.log_group / model_id_timed
     )
-    csv_output_dir.mkdir(parents=True, exist_ok=True)
-    with open(csv_output_dir / "config.json", "w") as f:
-        json.dump(dataclasses.asdict(config), f, indent=2)
+    shared.save_config(config, csv_output_dir)
 
     # Gather test predictions
     results = lass.test.test(test, model, config.model)
-
-    # Save predictions and metrics
-    dumpable = lambda r: {"logits": r.logits.tolist(), "labels": r.labels.tolist()}
-    with open(csv_output_dir / "metrics.json", "w") as f:
-        json.dump(results.metrics, f, indent=2)
-    with open(csv_output_dir / "predictions.json", "w") as f:
-        json.dump(dumpable(results), f)
+    shared.dump_results(results, csv_output_dir)
 
     # Save predictions and metrics per task
     results_per_task = lass.test.test_per_task(test, model, config.model)
-    with open(csv_output_dir / "metrics_per_task.json", "w") as f:
-        metrics = {k: v.metrics for k, v in results_per_task.items()}
-        json.dump(metrics, f, indent=2)
-    with open(csv_output_dir / "predictions_per_task.json", "w") as f:
-        predictions = {k: dumpable(v) for k, v in results_per_task.items()}
-        json.dump(predictions, f)
-
-    # Copy this dir to "latest" dir as well
-    latest_dir = csv_output_dir.parent / "latest"
-    latest_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(csv_output_dir, latest_dir)
+    shared.dump_results_per_task(results_per_task, csv_output_dir)
 
     print(results.metrics)
 
