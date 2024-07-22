@@ -130,6 +130,12 @@ def run(args: Args):
         faulty_tasks = {}
 
         for task in tasks:
+            print(f"Training on task {task}")
+            # Still giving OOMs, can't make it much smaller
+            if task in ["dyck_languages", "intersect_geometry"]:
+                faulty_tasks[task] = "OOM"
+                continue
+
             cfg_task = deepcopy(config)
             cfg_task.data_spec.tasks = [task]
             cfg_task.log_info.use_wandb = (  # Only log the last task in wandb to avoid spamming

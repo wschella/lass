@@ -127,7 +127,7 @@ def train(
                 model_name, num_labels=2
             )
 
-    if model_name == "gpt2":
+    if model_name == "openai-community/gpt2":
         model.config.pad_token_id = model.config.eos_token_id  # type: ignore
 
     # Make sure to do saving, logging, eval at least once

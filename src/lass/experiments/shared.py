@@ -87,3 +87,23 @@ def latest_checkpoint(dir: Path) -> Path:
         for p in dir.glob("checkpoint-*")
     )
     return dir / f"checkpoint-{step}"
+
+
+def get_alias(model_name: str) -> str:
+    """
+    Get the alias for a model name.
+    """
+    #
+    # models=("albert/albert-base-v2" "google-bert/bert-base-cased" "FacebookAI/roberta-base" "microsoft/deberta-v3-base" "openai-community/gpt2"
+    mapping = {
+        "albert/albert-base-v2": "albert-base",
+        "google-bert/bert-base-cased": "bert-base",
+        "FacebookAI/roberta-base": "roberta-base",
+        "microsoft/deberta-v3-small": "deberta-small",
+        "microsoft/deberta-v3-base": "deberta-base",
+        "microsoft/deberta-v3-large": "deberta-large",
+        "openai-community/gpt2": "gpt2",
+    }
+    if model_name not in mapping:
+        raise ValueError(f"Model alias not found for {model_name}.")
+    return mapping[model_name]

@@ -99,7 +99,7 @@ def run(args: Args):
         hypers=(hypers if args.epochs is None else replace(hypers, epochs=args.epochs)),
         log_info=cfg.LogInfo(
             output_dir=str(artifacts / "assessors" / "q6scaling"),
-            model_alias="deberta-base",
+            model_alias=f"deberta-{args.assessor}",
             log_group="q6scaling" if not args.is_test_run else "pipeline-test",
             use_wandb=True if not args.is_test_run else False,
         ),

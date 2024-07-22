@@ -10,8 +10,6 @@ import os
 from pathlib import Path
 from typing import Optional
 
-import pandas as pd
-
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 # autopep8: on
@@ -29,9 +27,9 @@ class Args:
     seed: int
     time: str
     model: str
-    model_alias: str
     is_test_run: bool
     test_with: Path
+    shots: Optional[list[int]]
     epochs: Optional[int]
 
 
@@ -46,7 +44,6 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--time", type=str)
     parser.add_argument("--model", type=str)
-    parser.add_argument("--model-alias", type=str)
 
     parser.add_argument(
         "--test-run", action="store_true", default=False, dest="is_test_run"
@@ -56,6 +53,7 @@ def main():
         type=Path,
     )
     parser.add_argument("--epochs", type=int, default=None)
+    parser.add_argument("--shots", type=int, nargs="+", default=None)
     args_raw = parser.parse_args()
     args = Args(**vars(args_raw))
     run(args)
@@ -80,7 +78,7 @@ def run(args: Args):
             tasks="paper-full",
             model_families=["BIG-G T=0"],
             model_sizes=["128b"],
-            shots=[3],
+            shots=[3] if args.shots is None else args.shots,
             query_types=["multiple_choice", "scoring", "generative"],
         ),
         model=args.model,
@@ -96,7 +94,7 @@ def run(args: Args):
         ),
         log_info=cfg.LogInfo(
             output_dir=str(artifacts / "assessors" / "xtra_architecture_selection"),
-            model_alias=args.model_alias,
+            model_alias=shared.get_alias(args.model),
             log_group=(
                 "xtra_architecture_selection"
                 if not args.is_test_run
@@ -128,7 +126,9 @@ def run(args: Args):
     # Actually train a new model
     else:
         model_output_dir = (
-            Path(config.log_info.output_dir) / args.time / args.model_alias
+            Path(config.log_info.output_dir)
+            / args.time
+            / str(config.log_info.model_alias)
         )
         shared.save_config(config, model_output_dir)
 
@@ -148,7 +148,7 @@ def run(args: Args):
         / "csv-results-new"
         / config.log_info.log_group
         / args.time
-        / args.model_alias
+        / str(config.log_info.model_alias)
     )
     shared.save_config(config, csv_output_dir)
 
@@ -160,3 +160,7 @@ def run(args: Args):
 
     print(results.metrics)
     print("Done!")
+
+
+if __name__ == "__main__":
+    main()

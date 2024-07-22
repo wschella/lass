@@ -1,10 +1,12 @@
 # Slurm logs
 X*.out
+T*.out
 
 artifacts/*
 !artifacts/.gitkeep
 !artifacts/logs/.gitkeep
 !artifacts/csv-results/
+!artifacts/csv-results-new/
 notebooks/test_trainer/
 notebooks/wandb/
 wandb/

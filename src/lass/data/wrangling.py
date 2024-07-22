@@ -237,7 +237,7 @@ def _get_tokenizer(
         model_name, truncation_side=truncation_side
     )
 
-    if model_name == "gpt2":
+    if model_name == "openai-community/gpt2":
         tokenizer.pad_token = tokenizer.eos_token
 
     return tokenizer
