@@ -2,6 +2,7 @@
 X*.out
 T*.out
 
+archive/
 artifacts/*
 !artifacts/.gitkeep
 !artifacts/logs/.gitkeep
