@@ -72,9 +72,7 @@ def run(args: Args):
         include_model_in_input=True,  #! Important, such that assessors can differentiate
         include_n_targets_in_input=False,
         filter_bad_tasks=True,
-        hypers=cfg.HYPER_DEFAULT_REDUCED_MEM
-        if args.epochs is None
-        else replace(cfg.HYPER_DEFAULT_REDUCED_MEM, epochs=args.epochs),
+        hypers=cfg.HYPER_DEFAULT.reduce_mem(16).with_fields(n_epochs=args.epochs),
         log_info=cfg.LogInfo(
             output_dir=str(artifacts / "assessors" / "q5population"),
             model_alias="deberta-base",
@@ -103,7 +101,7 @@ def run(args: Args):
     if args.test_with:
         model = args.test_with
         model_id_timed = model.parent.name
-        model_finetuned = shared.latest_checkpoint(args.test_with / "finetuned")
+        model_finetuned = shared.earliest_checkpoint(args.test_with / "finetuned")
     # Actually train a new model
     else:
         _, model_id_timed = shared.make_model_id(config)

@@ -23,6 +23,25 @@ class HyperParams:
     learning_rate: float
     extra: Dict[str, Any]
 
+    def reduce_mem(self, max_batch_size: int) -> "HyperParams":
+        assert self.batch_size % max_batch_size == 0
+        ratio = self.batch_size // max_batch_size
+        if ratio < 1:
+            return self
+
+        return dataclasses.replace(
+            self,
+            batch_size=max_batch_size,
+            gradient_accumulation_steps=self.gradient_accumulation_steps * ratio,
+        )
+
+    def with_fields(self, **kwargs) -> "HyperParams":
+        for k, v in kwargs.items():
+            assert hasattr(self, k), f"Field {k} not found in HyperParams"
+            if v is None:
+                kwargs[k] = getattr(self, k)
+        return dataclasses.replace(self, **kwargs)
+
 
 @dataclass
 class Config:
@@ -56,14 +75,11 @@ HYPER_DEFAULT = HyperParams(
     extra={},
 )
 
-HYPER_DEFAULT_REDUCED_MEM = dataclasses.replace(
-    HYPER_DEFAULT, batch_size=16, gradient_accumulation_steps=2
-)
-
-HYPER_DEFAULT_REDUCED_MEM_2 = dataclasses.replace(
-    HYPER_DEFAULT, batch_size=8, gradient_accumulation_steps=4
-)
-
-HYPER_DEFAULT_REDUCED_MEM_3 = dataclasses.replace(
-    HYPER_DEFAULT, batch_size=4, gradient_accumulation_steps=8
+HYPER_SMALL_DATA = HyperParams(
+    batch_size=32,
+    gradient_accumulation_steps=1,
+    n_epochs=18,
+    warmup_steps=50,
+    learning_rate=1e-5,
+    extra={},
 )

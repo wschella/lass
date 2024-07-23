@@ -66,8 +66,8 @@ def run(args: Args):
             logdir="artifacts/logs",
             tasks="paper-full",
             model_families=["BIG-G T=0"],
-            model_sizes=["128b"],
             # Should not matter, since only use the prompt here.
+            model_sizes=["128b"],
             shots=[3] if args.shots is None else args.shots,
             # No generative tasks, deberta can't handle it.
             query_types=["multiple_choice"],
@@ -78,14 +78,8 @@ def run(args: Args):
         include_model_in_input=False,
         include_n_targets_in_input=False,
         filter_bad_tasks=True,
-        hypers=cfg.HyperParams(
-            n_epochs=cfg.HYPER_DEFAULT.n_epochs if args.epochs is None else args.epochs,
-            warmup_steps=cfg.HYPER_DEFAULT.warmup_steps,
-            learning_rate=cfg.HYPER_DEFAULT.learning_rate,
-            batch_size=1,  # Some issues with padding and collation and whatnot.
-            gradient_accumulation_steps=cfg.HYPER_DEFAULT.batch_size,  # Accumulate to total batch size
-            extra=cfg.HYPER_DEFAULT.extra,
-        ),
+        # Reduce to batch size 1 due to data collation and padding issues
+        hypers=cfg.HYPER_SMALL_DATA.reduce_mem(1).with_fields(n_epochs=args.epochs),
         log_info=cfg.LogInfo(
             output_dir=str(artifacts / "assessors" / "q3correlation"),
             model_alias="deberta-base",
@@ -120,7 +114,7 @@ def run(args: Args):
         model_output_dir = args.test_with
         model_id_timed = model_output_dir.name
         for task in tasks:
-            models[task] = shared.latest_checkpoint(model_output_dir / task)
+            models[task] = shared.earliest_checkpoint(model_output_dir / task)
     # Actually train a new model
     else:
         model_id, model_id_timed = shared.make_model_id(config)
@@ -163,7 +157,7 @@ def run(args: Args):
                     is_test_run=args.is_test_run,
                     original_task=True,
                 )
-                models[task] = shared.latest_checkpoint(model_task_output_dir)
+                models[task] = shared.earliest_checkpoint(model_task_output_dir)
             except AssertionError as e:
                 if "Task has variable number of targets. Unsupported." in str(e):
                     faulty_tasks[task] = "Variable number of targets"

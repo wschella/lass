@@ -77,9 +77,7 @@ def run(args: Args):
         include_model_in_input=False,
         include_n_targets_in_input=False,
         filter_bad_tasks=True,
-        hypers=cfg.HYPER_DEFAULT_REDUCED_MEM
-        if args.epochs is None
-        else replace(cfg.HYPER_DEFAULT_REDUCED_MEM, epochs=args.epochs),
+        hypers=cfg.HYPER_SMALL_DATA.reduce_mem(16).with_fields(n_epochs=args.epochs),
         log_info=cfg.LogInfo(
             output_dir=str(artifacts / "assessors" / "q4multitask"),
             model_alias="deberta-base",
@@ -115,7 +113,7 @@ def run(args: Args):
         model_output_dir = args.test_with
         model_id_timed = model_output_dir.name
         for task in tasks:
-            models[task] = shared.latest_checkpoint(model_output_dir / task)
+            models[task] = shared.earliest_checkpoint(model_output_dir / task)
     # Actually train a new model
     else:
         model_id, model_id_timed = shared.make_model_id(config)
@@ -148,7 +146,7 @@ def run(args: Args):
                 config=cfg_task,
                 is_test_run=args.is_test_run,
             )
-            models[task] = shared.latest_checkpoint(model_task_output_dir)
+            models[task] = shared.earliest_checkpoint(model_task_output_dir)
 
     # Copy config to CSV output dir
     csv_output_dir = (

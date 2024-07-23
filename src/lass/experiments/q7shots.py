@@ -97,11 +97,7 @@ def run(args: Args):
         include_model_in_input=False,
         include_n_targets_in_input=False,
         filter_bad_tasks=True,
-        hypers=(
-            cfg.HYPER_DEFAULT_REDUCED_MEM
-            if args.epochs is None
-            else replace(cfg.HYPER_DEFAULT_REDUCED_MEM, epochs=args.epochs)
-        ),
+        hypers=cfg.HYPER_DEFAULT.reduce_mem(16).with_fields(n_epochs=args.epochs),
         log_info=cfg.LogInfo(
             output_dir=str(artifacts / "assessors" / "q7shots"),
             model_alias="deberta-base",
@@ -131,7 +127,7 @@ def run(args: Args):
     if args.test_with:
         model_id_timed = args.test_with.name
         model_output_dir = args.test_with / args.truncation_side / str(args.shots)
-        model_output_dir = shared.latest_checkpoint(model_output_dir)
+        model_output_dir = shared.earliest_checkpoint(model_output_dir)
     # Actually train a new model
     else:
         # Can't use default model_id_timed, as this script will be called multiple times, and we'd like files to be grouped

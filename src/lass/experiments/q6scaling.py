@@ -72,11 +72,6 @@ def run(args: Args):
 
     assert args.subject in ["2m", "16m", "53m", "125m", "244m", "422m", "1b", "2b", "4b", "8b", "27b", "128b"]  # fmt: off
     assert args.assessor in ["small", "base", "large"]
-    hypers = (
-        cfg.HYPER_DEFAULT_REDUCED_MEM_3
-        if args.assessor == "large"
-        else cfg.HYPER_DEFAULT_REDUCED_MEM
-    )
 
     artifacts = Path("./artifacts")
     config = cfg.Config(
@@ -96,7 +91,9 @@ def run(args: Args):
         include_model_in_input=False,
         include_n_targets_in_input=False,
         filter_bad_tasks=True,
-        hypers=(hypers if args.epochs is None else replace(hypers, epochs=args.epochs)),
+        hypers=cfg.HYPER_DEFAULT.reduce_mem(
+            4 if args.assessor == "large" else 8
+        ).with_fields(n_epochs=args.epochs),
         log_info=cfg.LogInfo(
             output_dir=str(artifacts / "assessors" / "q6scaling"),
             model_alias=f"deberta-{args.assessor}",
@@ -137,7 +134,7 @@ def run(args: Args):
     if args.test_with:
         model_id_timed = args.test_with.name
         model_output_dir = args.test_with / args.assessor / args.subject
-        model_output_dir = shared.latest_checkpoint(model_output_dir)
+        model_output_dir = shared.earliest_checkpoint(model_output_dir)
     # Actually train a new model
     else:
         # Can't use default model_id_timed, as this script will be called multiple times, and we'd like files to be grouped

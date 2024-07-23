@@ -87,11 +87,7 @@ def run(args: Args):
         include_model_in_input=False,
         include_n_targets_in_input=False,
         filter_bad_tasks=True,
-        hypers=(
-            cfg.HYPER_DEFAULT_REDUCED_MEM
-            if args.epochs is None
-            else replace(cfg.HYPER_DEFAULT_REDUCED_MEM, epochs=args.epochs)
-        ),
+        hypers=cfg.HYPER_DEFAULT.reduce_mem(16).with_fields(n_epochs=args.epochs),
         log_info=cfg.LogInfo(
             output_dir=str(artifacts / "assessors" / "xtra_architecture_selection"),
             model_alias=shared.get_alias(args.model),

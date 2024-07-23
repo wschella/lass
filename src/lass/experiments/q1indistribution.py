@@ -5,7 +5,6 @@ from dataclasses import dataclass, replace
 # autopep8: off
 import os
 from pathlib import Path
-import shutil
 from typing import Optional
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -76,9 +75,7 @@ def run(args: Args):
         include_model_in_input=False,
         include_n_targets_in_input=False,
         filter_bad_tasks=True,
-        hypers=cfg.HYPER_DEFAULT_REDUCED_MEM
-        if args.epochs is None
-        else replace(cfg.HYPER_DEFAULT_REDUCED_MEM, epochs=args.epochs),
+        hypers=cfg.HYPER_DEFAULT.reduce_mem(16).with_fields(n_epochs=args.epochs),
         log_info=cfg.LogInfo(
             output_dir=str(artifacts / "assessors" / "q1indistribution"),
             model_alias="deberta-base",
@@ -135,11 +132,6 @@ def run(args: Args):
     # Save predictions and metrics per task
     results_per_task = lass.test.test_per_task(test, model, config.model)
     shared.dump_results_per_task(results_per_task, csv_output_dir)
-
-    # Copy this dir to "latest" dir as well
-    # latest_dir = csv_output_dir.parent / "latest"
-    # latest_dir.mkdir(parents=True, exist_ok=True)
-    # shutil.copytree(csv_output_dir, latest_dir)
 
     print(results.metrics)
     print("Done!")

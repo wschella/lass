@@ -78,11 +78,13 @@ def dump_as_json(obj, path: Path):
         json.dump(obj, f, indent=2)
 
 
-def latest_checkpoint(dir: Path) -> Path:
+def earliest_checkpoint(dir: Path) -> Path:
     """
-    Find the latest checkpoint in a directory.
+    Find the earliest checkpoint in a directory.
+    Usually we have two saved checkpoints, the best so far, and the latest.
+    We usually want to load the best so far, i.e. the earliest.
     """
-    step = max(
+    step = min(
         int(p.name.split("-")[1])  # looks like checkpoint-4000
         for p in dir.glob("checkpoint-*")
     )
