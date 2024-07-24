@@ -15,6 +15,7 @@ import lass.plotting.shared as shared
 class Args:
     path_assessors: Optional[Path]
     path_subjects: Optional[Path]
+    shots: Literal[0, 3]
     version: Optional[Literal["v1"]]
 
 
@@ -22,6 +23,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--path-assessors", type=Path)
     parser.add_argument("--path-subjects", type=Path)
+    parser.add_argument("--shots", type=int, choices=[0, 3], default=3)
     parser.add_argument("--version", type=str, choices=["v1"], default="v1")
     args_raw = parser.parse_args()
     run(Args(**vars(args_raw)))
@@ -29,8 +31,13 @@ def main():
 
 def run(args: Args):
     base = Path("./artifacts/csv-results-new/")
-    default_subjects = base / "q3correlation" / "deberta-base_bs32_3sh_instance-split-07221848"  # fmt: skip
-    default_assessors = base / "q4multitask" / "deberta-base_bs32_3sh_instance-split-07191537"  # fmt: skip
+    if args.shots == 3:
+        default_subjects = base / "q3correlation" / "deberta-base_bs32_3sh_instance-split-07231721"  # fmt: skip
+        default_assessors = base / "q4multitask" / "deberta-base_bs32_3sh_instance-split-07231725"  # fmt: skip
+    if args.shots == 0:
+        default_subjects = base / "q3correlation" / "deberta-base_bs32_0sh_instance-split-07231724"  # fmt: skip
+        default_assessors = base / "q4multitask" / "deberta-base_bs32_0sh_instance-split-07231725"  # fmt: skip
+
     path_subjects = args.path_subjects or default_subjects
     path_assessors = args.path_assessors or default_assessors
     assert path_subjects.exists(), f"Path does not exist: {path_subjects}"
@@ -44,7 +51,7 @@ def run(args: Args):
         plot, plot_data = plotv1(results_subjects, results_assessors)
     else:
         raise ValueError(f"Invalid version: {args.version}")
-    shared.save_to(plot, plot_data, plot_path / f"q3correlation_{args.version}.pdf")
+    shared.save_to(plot, plot_data, plot_path / f"q3correlation_{args.version}_{args.shots}sh.pdf")  # fmt: skip
 
 
 def plotv1(
@@ -89,6 +96,10 @@ def correlation_plot(data: pd.DataFrame) -> Figure:
 
     # Plot diagonal line
     plt.plot([0, 1], [0, 1], transform=plt.gca().transAxes, ls="--", c="k")
+
+    # Calculate correlation
+    corr = data.corr().loc["subjects", "assessors"]
+    plt.title(f"Correlation: {corr:.3f}")
 
     return fig
 

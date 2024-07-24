@@ -10,19 +10,24 @@ import lass.plotting.shared as shared
 class Args:
     path: Optional[Path]
     version: Optional[Literal["v1"]]
+    shots: Optional[Literal[0, 3]]
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--path", type=Path)
     parser.add_argument("--version", type=str, choices=["v1"], default="v1")
+    parser.add_argument("--shots", type=int, choices=[0, 3], default=3)
     args_raw = parser.parse_args()
     run(Args(**vars(args_raw)))
 
 
 def run(args: Args):
     base = Path("./artifacts/csv-results-new/")
-    default = base / "q2outofdistribution" / "deberta-base_bs32_3sh_task-split-07191115"  # fmt: skip
+    if args.shots == 3:
+        default = base / "q2outofdistribution" / "deberta-base_bs32_3sh_task-split-07191115"  # fmt: skip
+    if args.shots == 0:
+        default = base / "q2outofdistribution" / "deberta-base_bs32_0sh_task-split-07201222"  # fmt: skip
     path = args.path or default
     assert path.exists(), f"Path does not exist: {path}"
 
@@ -42,7 +47,7 @@ def run(args: Args):
         )
     else:
         raise ValueError(f"Invalid version: {args.version}")
-    shared.save_to(auroc, auroc_data, plot_path / f"q2outofdistribution_auroc_{args.version}.pdf")  # fmt: skip
+    shared.save_to(auroc, auroc_data, plot_path / f"q2outofdistribution_auroc_{args.version}_{args.shots}sh.pdf")  # fmt: skip
 
     if args.version == "v1":
         mcb, mcb_data = shared.plot_absolute(
@@ -54,7 +59,7 @@ def run(args: Args):
         )
     else:
         raise ValueError(f"Invalid version: {args.version}")
-    shared.save_to(mcb, mcb_data, plot_path / f"q2outofdistribution_mcb_{args.version}.pdf")  # fmt: skip
+    shared.save_to(mcb, mcb_data, plot_path / f"q2outofdistribution_mcb_{args.version}_{args.shots}sh.pdf")  # fmt: skip
 
 
 if __name__ == "__main__":
