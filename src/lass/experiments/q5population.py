@@ -53,6 +53,9 @@ def main():
 
 
 def run(args: Args):
+    assert args.test_with.exists()
+    assert args.test_with.is_dir()
+
     artifacts = Path("./artifacts")
 
     config = cfg.Config(
@@ -83,6 +86,11 @@ def run(args: Args):
 
     if args.test_with:
         config = shared.load_config(args.test_with)
+        fine_tune_location = shared.earliest_checkpoint(
+            args.test_with.parent / "finetuned"
+        )
+        assert fine_tune_location.exists()
+        config_finetuned = shared.load_config(fine_tune_location)
 
     shared.assert_GPU_available()
 
@@ -106,7 +114,9 @@ def run(args: Args):
     if args.test_with:
         model = args.test_with
         model_id_timed = model.parent.name
-        model_finetuned = shared.earliest_checkpoint(args.test_with / "finetuned")
+        model_finetuned = shared.earliest_checkpoint(
+            args.test_with.parent / "finetuned"
+        )
     # Actually train a new model
     else:
         _, model_id_timed = shared.make_model_id(config)
@@ -128,6 +138,7 @@ def run(args: Args):
         config_finetuned.hypers.n_epochs = 2
         config_finetuned.log_info.output_dir = str(model_output_dir_finetuned)
         config_finetuned.log_info.log_group = config.log_info.log_group + "-finetuned"
+        shared.save_config(config_finetuned, model_output_dir_finetuned)
 
         model_finetuned = lass.train.train(
             train_largest,
@@ -145,6 +156,7 @@ def run(args: Args):
         artifacts / "csv-results-new" / config.log_info.log_group / model_id_timed
     )
     shared.save_config(config, csv_output_dir)
+    shared.save_config(config_finetuned, csv_output_dir / "finetuned")
 
     # Gather test predictions
     results = lass.test.test(test, model, config.model)
@@ -159,7 +171,6 @@ def run(args: Args):
     shared.dump_results_per_task(results_per_task_largest, csv_output_dir / "largest")
 
     # Gather test predictions for finetuned model
-    shared.save_config(config_finetuned, csv_output_dir / "finetuned")
     results_ft = lass.test.test(test_largest, model_finetuned, config.model)
     shared.dump_results(results_ft, csv_output_dir / "finetuned")
     results_per_task_ft = lass.test.test_per_task(test_largest, model_finetuned, config.model)  # fmt: skip
