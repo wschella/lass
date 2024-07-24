@@ -1,0 +1,15 @@
+\begin{tabular}{rlrrrl}
+\toprule
+   auroc & architecture &  hidden\_size &  layer\_norm\_eps &  vocab\_size & sinusoidal\_pos\_embds \\
+\midrule
+0.765045 &         bert &        768.0 &    1.000000e-12 &       30522 &                 None \\
+0.772482 &         bert &        768.0 &    1.000000e-12 &       28996 &                 None \\
+0.498844 &         bert &       1024.0 &    1.000000e-12 &       28996 &                 None \\
+0.501907 &         bert &       1024.0 &    1.000000e-12 &       30522 &                 None \\
+0.760620 &   distilbert &          NaN &             NaN &       30522 &                False \\
+0.772792 &   distilbert &          NaN &             NaN &       28996 &                False \\
+0.767968 &   distilbert &          NaN &             NaN &       28996 &                 True \\
+0.772322 &      roberta &        768.0 &    1.000000e-05 &       50265 &                 None \\
+0.498947 &      roberta &       1024.0 &    1.000000e-05 &       50265 &                 None \\
+\bottomrule
+\end{tabular}
