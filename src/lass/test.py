@@ -32,6 +32,7 @@ def test(
     max_sequence_length: int = 512,
     truncation_side: Union[Literal["left"], Literal["right"]] = "right",
     original_task: bool = False,
+    batch_size: int = 1,
 ) -> TestResults:
     if type(model_loc) in [str, Path, bytes]:
         assert Path(model_loc).exists()  # type: ignore
@@ -41,15 +42,7 @@ def test(
     # pprint(stats)
     # print(test_data.head(1))
 
-    if isinstance(model_loc, (Path, str, bytes)):
-        if original_task:
-            model = AutoModelForMultipleChoice.from_pretrained(model_name)
-        else:
-            model: Module = AutoModelForSequenceClassification.from_pretrained(
-                model_loc, num_labels=2
-            )
-    else:
-        model: Module = model_loc  # type: ignore
+    model = get_model(model_loc, original_task)
 
     # Tokenize dataset
     logging.info("Starting tokenization")
@@ -81,13 +74,18 @@ def test(
         metrics = ["accuracy"]
         metrics += ["roc_auc_multiclass"] if n_targets > 2 else ["roc_auc"]
 
-    # Dummy Trainer for easy batched predictions
     if original_task:
         baselines = {}
     else:
         baselines = lass.metrics.baseline.get_baselines(test_data, metrics)
 
-    dummy_args = TrainingArguments(output_dir="tmp_trainer")  # To silence warning
+    # Dummy Trainer for easy batched predictions
+    # TODO: Actually batch predictions
+    dummy_args = TrainingArguments(
+        output_dir="tmp_trainer",  # To silence warning
+        per_device_eval_batch_size=batch_size,
+        per_device_train_batch_size=batch_size,
+    )
     dummy_trainer = Trainer(
         model=model,
         args=dummy_args,
@@ -114,15 +112,39 @@ def test_per_task(
     model_name: str,
     max_sequence_length: int = 512,
     truncation_side: Union[Literal["left"], Literal["right"]] = "right",
+    original_task: bool = False,
+    batch_size: int = 1,
 ) -> dict[str, TestResults]:
     tasks = {}
+
+    # Load the model only once
+    model = get_model(model_loc, original_task)
+
     for task_name in test_data.task.unique():
         task = test_data.query(f"task == '{task_name}'")
         try:
             tasks[task_name] = test(
-                task, model_loc, model_name, max_sequence_length, truncation_side
+                task,
+                model,
+                model_name,
+                max_sequence_length,
+                truncation_side,
+                batch_size=batch_size,
             )
         except Exception as e:
             print(f"Error in task {task_name}: {e}")
             raise e
     return tasks
+
+
+def get_model(model_loc: Union[Path, Module], original_task: bool) -> Module:
+    if isinstance(model_loc, (Path, str, bytes)):
+        if original_task:
+            model = AutoModelForMultipleChoice.from_pretrained(model_loc)
+        else:
+            model: Module = AutoModelForSequenceClassification.from_pretrained(
+                model_loc, num_labels=2
+            )
+    else:
+        model: Module = model_loc  # type: ignore
+    return model

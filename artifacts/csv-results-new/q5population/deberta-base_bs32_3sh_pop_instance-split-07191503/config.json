@@ -46,5 +46,6 @@
     "log_group": "q5population",
     "use_wandb": true,
     "model_alias": "deberta-base"
-  }
+  },
+  "extra": {}
 }

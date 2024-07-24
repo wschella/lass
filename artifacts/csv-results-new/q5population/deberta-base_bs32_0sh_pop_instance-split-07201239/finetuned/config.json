@@ -42,7 +42,7 @@
     "extra": {}
   },
   "log_info": {
-    "output_dir": "artifacts/assessors/q5population/deberta-base_bs32_0sh_pop_instance-split-07201239/finetuned",
+    "output_dir": "artifacts/assessors/q5population",
     "log_group": "q5population-finetuned",
     "use_wandb": true,
     "model_alias": "deberta-base"

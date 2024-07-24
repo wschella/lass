@@ -159,21 +159,23 @@ def run(args: Args):
     shared.save_config(config_finetuned, csv_output_dir / "finetuned")
 
     # Gather test predictions
-    results = lass.test.test(test, model, config.model)
+    results = lass.test.test(test, model, config.model, batch_size=16)
     shared.dump_results(results, csv_output_dir)
-    results_per_task = lass.test.test_per_task(test, model, config.model)
+    results_per_task = lass.test.test_per_task(test, model, config.model, batch_size=16)  # fmt: skip
     shared.dump_results_per_task(results_per_task, csv_output_dir)
 
     # Gather test predictions for largest subject only
-    results_largest = lass.test.test(test_largest, model, config.model)
+    results_largest = lass.test.test(test_largest, model, config.model, batch_size=16)
     shared.dump_results(results_largest, csv_output_dir / "largest")
-    results_per_task_largest = lass.test.test_per_task(test_largest, model, config.model)  # fmt: skip
+    results_per_task_largest = lass.test.test_per_task(test_largest, model, config.model, batch_size=16)  # fmt: skip
     shared.dump_results_per_task(results_per_task_largest, csv_output_dir / "largest")
 
     # Gather test predictions for finetuned model
-    results_ft = lass.test.test(test_largest, model_finetuned, config.model)
+    results_ft = lass.test.test(
+        test_largest, model_finetuned, config.model, batch_size=16
+    )
     shared.dump_results(results_ft, csv_output_dir / "finetuned")
-    results_per_task_ft = lass.test.test_per_task(test_largest, model_finetuned, config.model)  # fmt: skip
+    results_per_task_ft = lass.test.test_per_task(test_largest, model_finetuned, config.model, batch_size=16)  # fmt: skip
     shared.dump_results_per_task(results_per_task_ft, csv_output_dir / "finetuned")
 
     print(results_ft.metrics)

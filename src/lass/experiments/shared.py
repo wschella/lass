@@ -53,6 +53,7 @@ def save_config(config: Config, dir: Union[Path, str]):
 
 def dump_results(results: lass.test.TestResults, dir: Union[Path, str]):
     dir = Path(dir)
+    dir.mkdir(parents=True, exist_ok=True)
     dumpable = lambda r: {"logits": r.logits.tolist(), "labels": r.labels.tolist()}
     with open(dir / "metrics.json", "w") as f:
         json.dump(results.metrics, f, indent=2)
@@ -64,6 +65,7 @@ def dump_results_per_task(
     results: dict[str, lass.test.TestResults], dir: Union[Path, str]
 ):
     dir = Path(dir)
+    dir.mkdir(parents=True, exist_ok=True)
     dumpable = lambda r: {"logits": r.logits.tolist(), "labels": r.labels.tolist()}
     with open(dir / "metrics_per_task.json", "w") as f:
         metrics = {k: v.metrics for k, v in results.items()}
