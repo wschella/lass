@@ -15,7 +15,7 @@ import lass.plotting.shared as shared
 class Args:
     path_assessors: Optional[Path]
     path_subjects: Optional[Path]
-    shots: Literal[0, 3]
+    shots: Literal[0, 3, -1]
     version: Optional[Literal["v1"]]
 
 
@@ -23,7 +23,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--path-assessors", type=Path)
     parser.add_argument("--path-subjects", type=Path)
-    parser.add_argument("--shots", type=int, choices=[0, 3], default=3)
+    parser.add_argument("--shots", type=int, choices=[0, 3, -1], default=-1)
     parser.add_argument("--version", type=str, choices=["v1"], default="v1")
     args_raw = parser.parse_args()
     run(Args(**vars(args_raw)))
@@ -31,20 +31,30 @@ def main():
 
 def run(args: Args):
     base = Path("./artifacts/csv-results-new/")
+
+    def load(default: Path, args_path: Path | None, save: bool = True) -> pd.DataFrame:
+        path = args_path or default
+        assert path.exists(), f"Path does not exist: {path}"
+        return shared.load_metrics(path, save=save, load=["task"])
+
+    results_subjects3 = load(base / "q3correlation" / "deberta-small_bs32_3sh_instance-split-07241130", args.path_subjects)  # fmt: skip
+    results_assessors3 = load(base / "q4multitask" / "deberta-base_bs32_3sh_instance-split-07231725", args.path_assessors, save=False)  # fmt: skip
+    results_subjects0 = load(base / "q3correlation" / "deberta-small_bs32_0sh_instance-split-07241130", args.path_subjects)  # fmt: skip
+    results_assessors0 = load(base / "q4multitask" / "deberta-base_bs32_0sh_instance-split-07231725", args.path_assessors, save=False)  # fmt: skip
+
     if args.shots == 3:
-        default_subjects = base / "q3correlation" / "deberta-base_bs32_3sh_instance-split-07231721"  # fmt: skip
-        default_assessors = base / "q4multitask" / "deberta-base_bs32_3sh_instance-split-07231725"  # fmt: skip
-    if args.shots == 0:
-        default_subjects = base / "q3correlation" / "deberta-base_bs32_0sh_instance-split-07231724"  # fmt: skip
-        default_assessors = base / "q4multitask" / "deberta-base_bs32_0sh_instance-split-07231725"  # fmt: skip
-
-    path_subjects = args.path_subjects or default_subjects
-    path_assessors = args.path_assessors or default_assessors
-    assert path_subjects.exists(), f"Path does not exist: {path_subjects}"
-    assert path_assessors.exists(), f"Path does not exist: {path_assessors}"
-
-    results_subjects = shared.load_metrics(path_subjects, load=["task"])
-    results_assessors = shared.load_metrics(path_assessors, save=False, load=["task"])
+        results_subjects = results_subjects3
+        results_assessors = results_assessors3
+    elif args.shots == 0:
+        results_subjects = results_subjects0
+        results_assessors = results_assessors0
+    elif args.shots == -1:
+        results_subjects3["task"] = results_subjects3["task"] + "_3sh"
+        results_subjects0["task"] = results_subjects0["task"] + "_0sh"
+        results_assessors3["task"] = results_assessors3["task"] + "_3sh"
+        results_assessors0["task"] = results_assessors0["task"] + "_0sh"
+        results_subjects = pd.concat([results_subjects3, results_subjects0])
+        results_assessors = pd.concat([results_assessors3, results_assessors0])
 
     plot_path = base / ".." / "plots" / "q3correlation"
     if args.version == "v1":
@@ -58,10 +68,12 @@ def plotv1(
     results_subjects: pd.DataFrame, results_assessors: pd.DataFrame
 ) -> Tuple[Figure, pd.DataFrame]:
     results_assessors.set_index("task", inplace=True)
-    results_assessors = results_assessors[results_assessors.instance_count >= 100]
+    # results_assessors = results_assessors[results_assessors.instance_count >= 100]
+    results_assessors = results_assessors[results_assessors.instance_count >= 30]
 
     results_subjects.set_index("task", inplace=True)
-    results_subjects = results_subjects[results_subjects.instance_count >= 100]
+    # results_subjects = results_subjects[results_subjects.instance_count >= 100]
+    results_subjects = results_subjects[results_subjects.instance_count >= 30]
 
     print(
         f"Total number of tasks: {len(results_assessors)}, with {len(results_subjects)} having finetuned BERT performance available."
@@ -91,8 +103,9 @@ def correlation_plot(data: pd.DataFrame) -> Figure:
     plt.ylabel(f"AUROC of Assessor for BIG-G 128b")
 
     min_val = min(min(data.subjects), min(data.assessors))
-    plt.xlim(min_val - 0.1 * min_val, 1.015)
-    plt.ylim(min_val - 0.1 * min_val, 1.015)
+    max_val = max(max(data.subjects), max(data.assessors))
+    plt.xlim(min_val - 0.1 * min_val, max_val + 0.1 * max_val)
+    plt.ylim(min_val - 0.1 * min_val, max_val + 0.1 * max_val)
 
     # Plot diagonal line
     plt.plot([0, 1], [0, 1], transform=plt.gca().transAxes, ls="--", c="k")
