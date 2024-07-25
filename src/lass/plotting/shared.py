@@ -195,6 +195,24 @@ def load_metrics(
         results.index.names = ["task"]
         results = results.reset_index()
 
+        # Filter out these tasks with (temporary) contamination issues.
+        results = results[
+            ~results.task.isin(
+                [
+                    "unit_conversion",
+                    "geometric_shapes",
+                    "minute_mysteries_qa",
+                    "strategyqa",
+                    "penguins_in_a_table",
+                    "similarities_abstraction",
+                    "kanji_ascii",
+                    "emoji_movie",
+                    "color",
+                    "checkmate_in_one",
+                ]
+            )
+        ]
+
     # Load total dataset metrics
     total = pd.DataFrame()
     if "total" in load:
