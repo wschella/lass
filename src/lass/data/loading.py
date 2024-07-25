@@ -137,7 +137,8 @@ def remove_duplicate_queries(df: pd.DataFrame) -> pd.DataFrame:
     df_best = df.query(f"model_name == '{best[0]}' and model_family == '{best[1]}'")
 
     # Find the tasks that have both a multiple_choice and a scoring_generative query_type
-    tasks_with_both = df_best.groupby(["task", "query_type"]).query_type.nunique()
+    tasks_with_both = df_best.groupby(["task"]).query_type.nunique()
+    assert tasks_with_both.max() <= 2, "Tasks with more then 2 query types. Unexpected."
     tasks_with_both = tasks_with_both[tasks_with_both == 2].index
 
     # Iterate over the tasks and decide which query_type to drop (get a list of pairs (task, query_type))
@@ -152,6 +153,9 @@ def remove_duplicate_queries(df: pd.DataFrame) -> pd.DataFrame:
             df.query(f"task == '{task}' and query_type == '{query_type}'").index
         )
 
+    assert (
+        df.groupby("task").query_type.nunique().max() == 1
+    ), "Some tasks still have multiple query_types. Programming error."
     return df
 
 
