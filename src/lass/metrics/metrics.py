@@ -51,10 +51,10 @@ roc_auc_multiclass_ = load_metric("roc_auc", config_name="multiclass")
 
 
 def roc_auc_multiclass(predictions, references, probs) -> dict[str, float]:
-    # We use micro, as we often work with small test sets, and we don't know much about the class importances.
     if is_unrocable(predictions, references, probs):
         return {"roc_auc": math.nan}
 
+    # We use micro, as we often work with small test sets, and we don't know much about the class importances.
     return roc_auc_multiclass_.compute(
         prediction_scores=probs,
         references=references,

@@ -72,17 +72,17 @@ def run(args: Args):
             # No generative tasks, deberta can't handle it.
             query_types=["multiple_choice"],
         ),
-        model="microsoft/deberta-v3-base",
+        model="microsoft/deberta-v3-small",
         split_type="instance",
         test_fraction=0.2,
         include_model_in_input=False,
         include_n_targets_in_input=False,
-        filter_bad_tasks=True,
+        filter_bad_tasks=False,
         # Reduce to batch size 1 due to data collation and padding issues
         hypers=cfg.HYPER_SMALL_DATA.reduce_mem(1).with_fields(n_epochs=args.epochs),
         log_info=cfg.LogInfo(
             output_dir=str(artifacts / "assessors" / "q3correlation"),
-            model_alias="deberta-base",
+            model_alias="deberta-small",
             log_group="q3correlation" if not args.is_test_run else "pipeline-test",
             use_wandb=True,
         ),
