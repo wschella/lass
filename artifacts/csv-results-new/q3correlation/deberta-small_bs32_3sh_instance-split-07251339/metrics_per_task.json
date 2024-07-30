@@ -1,0 +1,704 @@
+{
+  "anachronisms": {
+    "test_loss": 0.6931459307670593,
+    "test_accuracy": 0.5,
+    "test_roc_auc": 0.5132575757575757,
+    "test_runtime": 1.4461,
+    "test_samples_per_second": 31.809,
+    "test_steps_per_second": 31.809,
+    "instance_count": 46
+  },
+  "analogical_similarity": {
+    "test_loss": 1.9459309577941895,
+    "test_accuracy": 0.07692307692307693,
+    "test_roc_auc": 0.5,
+    "test_runtime": 4.6812,
+    "test_samples_per_second": 13.885,
+    "test_steps_per_second": 13.885,
+    "instance_count": 65
+  },
+  "analytic_entailment": {
+    "test_loss": 0.6931858658790588,
+    "test_accuracy": 0.2857142857142857,
+    "test_roc_auc": 0.29166666666666663,
+    "test_runtime": 0.4544,
+    "test_samples_per_second": 30.808,
+    "test_steps_per_second": 30.808,
+    "instance_count": 14
+  },
+  "authorship_verification": {
+    "test_loss": 0.6932096481323242,
+    "test_accuracy": 0.4715909090909091,
+    "test_roc_auc": 0.4563440581214323,
+    "test_runtime": 5.5646,
+    "test_samples_per_second": 31.628,
+    "test_steps_per_second": 31.628,
+    "instance_count": 176
+  },
+  "bbq_lite_json": {
+    "test_loss": 0.3667081594467163,
+    "test_accuracy": 0.7277227722772277,
+    "test_roc_auc": 0.9328216870906191,
+    "test_runtime": 7.84,
+    "test_samples_per_second": 25.765,
+    "test_steps_per_second": 25.765,
+    "instance_count": 202
+  },
+  "causal_judgment": {
+    "test_loss": 0.6931818127632141,
+    "test_accuracy": 0.34210526315789475,
+    "test_roc_auc": 0.5046153846153847,
+    "test_runtime": 1.2118,
+    "test_samples_per_second": 31.359,
+    "test_steps_per_second": 31.359,
+    "instance_count": 38
+  },
+  "cause_and_effect": {
+    "test_loss": 0.6929754614830017,
+    "test_accuracy": 0.8709677419354839,
+    "test_roc_auc": NaN,
+    "test_runtime": 0.9763,
+    "test_samples_per_second": 31.751,
+    "test_steps_per_second": 31.751,
+    "instance_count": 31
+  },
+  "cifar10_classification": {
+    "test_loss": 2.3023717403411865,
+    "test_accuracy": 0.12682926829268293,
+    "test_roc_auc": 0.5291921138580872,
+    "test_runtime": 19.776,
+    "test_samples_per_second": 10.366,
+    "test_steps_per_second": 10.366,
+    "instance_count": 205
+  },
+  "color": {
+    "test_loss": 1.886515736579895,
+    "test_accuracy": 0.2731707317073171,
+    "test_roc_auc": 0.5541993422161666,
+    "test_runtime": 19.5728,
+    "test_samples_per_second": 10.474,
+    "test_steps_per_second": 10.474,
+    "instance_count": 205
+  },
+  "common_morpheme": {
+    "test_loss": 1.3862311840057373,
+    "test_accuracy": 0.5,
+    "test_roc_auc": 0.7075,
+    "test_runtime": 0.4921,
+    "test_samples_per_second": 20.32,
+    "test_steps_per_second": 20.32,
+    "instance_count": 10
+  },
+  "conceptual_combinations": {
+    "test_loss": 1.3862595558166504,
+    "test_accuracy": 0.3333333333333333,
+    "test_roc_auc": NaN,
+    "test_runtime": 1.0031,
+    "test_samples_per_second": 20.936,
+    "test_steps_per_second": 20.936,
+    "instance_count": 21
+  },
+  "crash_blossom": {
+    "test_loss": 1.3862158060073853,
+    "test_accuracy": 0.25,
+    "test_roc_auc": NaN,
+    "test_runtime": 0.388,
+    "test_samples_per_second": 20.62,
+    "test_steps_per_second": 20.62,
+    "instance_count": 8
+  },
+  "crass_ai": {
+    "test_loss": 1.3862518072128296,
+    "test_accuracy": 0.2222222222222222,
+    "test_roc_auc": NaN,
+    "test_runtime": 0.4359,
+    "test_samples_per_second": 20.647,
+    "test_steps_per_second": 20.647,
+    "instance_count": 9
+  },
+  "cryobiology_spanish": {
+    "test_loss": 0.6914034485816956,
+    "test_accuracy": 0.8620689655172413,
+    "test_roc_auc": NaN,
+    "test_runtime": 0.9093,
+    "test_samples_per_second": 31.893,
+    "test_steps_per_second": 31.893,
+    "instance_count": 29
+  },
+  "dark_humor_detection": {
+    "test_loss": 0.6931241750717163,
+    "test_accuracy": 0.5625,
+    "test_roc_auc": 0.65,
+    "test_runtime": 0.5177,
+    "test_samples_per_second": 30.906,
+    "test_steps_per_second": 30.906,
+    "instance_count": 16
+  },
+  "discourse_marker_prediction": {
+    "test_loss": 1.119258999824524,
+    "test_accuracy": 0.6608187134502924,
+    "test_roc_auc": 0.932187701855674,
+    "test_runtime": 16.4978,
+    "test_samples_per_second": 10.365,
+    "test_steps_per_second": 10.365,
+    "instance_count": 171
+  },
+  "emoji_movie": {
+    "test_loss": 1.6093391180038452,
+    "test_accuracy": 0.4,
+    "test_roc_auc": NaN,
+    "test_runtime": 1.11,
+    "test_samples_per_second": 18.018,
+    "test_steps_per_second": 18.018,
+    "instance_count": 20
+  },
+  "emojis_emotion_prediction": {
+    "test_loss": 2.079371929168701,
+    "test_accuracy": 0.0,
+    "test_roc_auc": NaN,
+    "test_runtime": 0.3292,
+    "test_samples_per_second": 12.152,
+    "test_steps_per_second": 12.152,
+    "instance_count": 4
+  },
+  "empirical_judgments": {
+    "test_loss": 1.0986028909683228,
+    "test_accuracy": 0.3,
+    "test_roc_auc": 0.5137362637362637,
+    "test_runtime": 0.7887,
+    "test_samples_per_second": 25.36,
+    "test_steps_per_second": 25.36,
+    "instance_count": 20
+  },
+  "english_russian_proverbs": {
+    "test_loss": 1.3863074779510498,
+    "test_accuracy": 0.25,
+    "test_roc_auc": 0.4471153846153846,
+    "test_runtime": 0.7915,
+    "test_samples_per_second": 20.214,
+    "test_steps_per_second": 20.214,
+    "instance_count": 16
+  },
+  "entailed_polarity": {
+    "test_loss": 0.6930282711982727,
+    "test_accuracy": 0.6,
+    "test_roc_auc": 0.8620689655172413,
+    "test_runtime": 0.9469,
+    "test_samples_per_second": 31.683,
+    "test_steps_per_second": 31.683,
+    "instance_count": 30
+  },
+  "entailed_polarity_hindi": {
+    "test_loss": 0.6926158666610718,
+    "test_accuracy": 0.6785714285714286,
+    "test_roc_auc": 0.391812865497076,
+    "test_runtime": 0.8865,
+    "test_samples_per_second": 31.586,
+    "test_steps_per_second": 31.586,
+    "instance_count": 28
+  },
+  "epistemic_reasoning": {
+    "test_loss": 0.4581752121448517,
+    "test_accuracy": 0.7658536585365854,
+    "test_roc_auc": 0.8674812030075187,
+    "test_runtime": 6.3827,
+    "test_samples_per_second": 32.118,
+    "test_steps_per_second": 32.118,
+    "instance_count": 205
+  },
+  "evaluating_information_essentiality": {
+    "test_loss": 1.6094502210617065,
+    "test_accuracy": 0.21428571428571427,
+    "test_roc_auc": 0.4880952380952381,
+    "test_runtime": 0.8001,
+    "test_samples_per_second": 17.497,
+    "test_steps_per_second": 17.497,
+    "instance_count": 14
+  },
+  "fact_checker": {
+    "test_loss": 0.6889973282814026,
+    "test_accuracy": 0.5454545454545454,
+    "test_roc_auc": 0.5877037037037037,
+    "test_runtime": 5.2026,
+    "test_samples_per_second": 31.715,
+    "test_steps_per_second": 31.715,
+    "instance_count": 165
+  },
+  "fantasy_reasoning": {
+    "test_loss": 0.6930062174797058,
+    "test_accuracy": 0.525,
+    "test_roc_auc": 0.4611528822055138,
+    "test_runtime": 1.277,
+    "test_samples_per_second": 31.323,
+    "test_steps_per_second": 31.323,
+    "instance_count": 40
+  },
+  "figure_of_speech_detection": {
+    "test_loss": 2.3024840354919434,
+    "test_accuracy": 0.3333333333333333,
+    "test_roc_auc": NaN,
+    "test_runtime": 1.1461,
+    "test_samples_per_second": 10.47,
+    "test_steps_per_second": 10.47,
+    "instance_count": 12
+  },
+  "formal_fallacies_syllogisms_negation": {
+    "test_loss": 0.6931388974189758,
+    "test_accuracy": 0.5170731707317073,
+    "test_roc_auc": 0.5404825481594506,
+    "test_runtime": 6.4851,
+    "test_samples_per_second": 31.611,
+    "test_steps_per_second": 31.611,
+    "instance_count": 205
+  },
+  "hhh_alignment": {
+    "test_loss": 0.6930401921272278,
+    "test_accuracy": 0.5681818181818182,
+    "test_roc_auc": NaN,
+    "test_runtime": 1.3937,
+    "test_samples_per_second": 31.571,
+    "test_steps_per_second": 31.571,
+    "instance_count": 44
+  },
+  "hinglish_toxicity": {
+    "test_loss": 0.6931482553482056,
+    "test_accuracy": 0.55,
+    "test_roc_auc": 0.43466666666666665,
+    "test_runtime": 1.2652,
+    "test_samples_per_second": 31.616,
+    "test_steps_per_second": 31.616,
+    "instance_count": 40
+  },
+  "human_organs_senses": {
+    "test_loss": 1.3862730264663696,
+    "test_accuracy": 0.25,
+    "test_roc_auc": NaN,
+    "test_runtime": 0.3882,
+    "test_samples_per_second": 20.61,
+    "test_steps_per_second": 20.61,
+    "instance_count": 8
+  },
+  "hyperbaton": {
+    "test_loss": 0.6931435465812683,
+    "test_accuracy": 0.5658536585365853,
+    "test_roc_auc": 0.5672325004768263,
+    "test_runtime": 6.4167,
+    "test_samples_per_second": 31.948,
+    "test_steps_per_second": 31.948,
+    "instance_count": 205
+  },
+  "implicatures": {
+    "test_loss": 0.693146824836731,
+    "test_accuracy": 0.47959183673469385,
+    "test_roc_auc": 0.4913793103448276,
+    "test_runtime": 3.0601,
+    "test_samples_per_second": 32.025,
+    "test_steps_per_second": 32.025,
+    "instance_count": 98
+  },
+  "implicit_relations": {
+    "test_loss": 3.218812942504883,
+    "test_accuracy": 0.058823529411764705,
+    "test_roc_auc": NaN,
+    "test_runtime": 3.7525,
+    "test_samples_per_second": 4.53,
+    "test_steps_per_second": 4.53,
+    "instance_count": 17
+  },
+  "intent_recognition": {
+    "test_loss": 0.17198213934898376,
+    "test_accuracy": 0.9280575539568345,
+    "test_roc_auc": 0.9967186993111082,
+    "test_runtime": 9.8291,
+    "test_samples_per_second": 14.142,
+    "test_steps_per_second": 14.142,
+    "instance_count": 139
+  },
+  "international_phonetic_alphabet_nli": {
+    "test_loss": 1.098616361618042,
+    "test_accuracy": 0.36,
+    "test_roc_auc": 0.4446013071895425,
+    "test_runtime": 0.9938,
+    "test_samples_per_second": 25.155,
+    "test_steps_per_second": 25.155,
+    "instance_count": 25
+  },
+  "irony_identification": {
+    "test_loss": 0.6930888891220093,
+    "test_accuracy": 0.65,
+    "test_roc_auc": 0.7252747252747253,
+    "test_runtime": 0.6398,
+    "test_samples_per_second": 31.26,
+    "test_steps_per_second": 31.26,
+    "instance_count": 20
+  },
+  "kanji_ascii": {
+    "test_loss": 1.5503251552581787,
+    "test_accuracy": 0.34210526315789475,
+    "test_roc_auc": 0.6233338951030327,
+    "test_runtime": 2.1468,
+    "test_samples_per_second": 17.701,
+    "test_steps_per_second": 17.701,
+    "instance_count": 38
+  },
+  "key_value_maps": {
+    "test_loss": 0.6931512951850891,
+    "test_accuracy": 0.35,
+    "test_roc_auc": 0.4266666666666667,
+    "test_runtime": 0.6449,
+    "test_samples_per_second": 31.012,
+    "test_steps_per_second": 31.012,
+    "instance_count": 20
+  },
+  "known_unknowns": {
+    "test_loss": 0.6931755542755127,
+    "test_accuracy": 0.4444444444444444,
+    "test_roc_auc": 0.25,
+    "test_runtime": 0.2974,
+    "test_samples_per_second": 30.266,
+    "test_steps_per_second": 30.266,
+    "instance_count": 9
+  },
+  "language_identification": {
+    "test_loss": 2.397467851638794,
+    "test_accuracy": 0.11219512195121951,
+    "test_roc_auc": 0.5060994927140016,
+    "test_runtime": 21.7367,
+    "test_samples_per_second": 9.431,
+    "test_steps_per_second": 9.431,
+    "instance_count": 205
+  },
+  "logical_args": {
+    "test_loss": 1.6092702150344849,
+    "test_accuracy": 0.3333333333333333,
+    "test_roc_auc": NaN,
+    "test_runtime": 0.3445,
+    "test_samples_per_second": 17.419,
+    "test_steps_per_second": 17.419,
+    "instance_count": 6
+  },
+  "logical_fallacy_detection": {
+    "test_loss": 0.687238872051239,
+    "test_accuracy": 0.551219512195122,
+    "test_roc_auc": 0.5186610234705655,
+    "test_runtime": 6.4252,
+    "test_samples_per_second": 31.906,
+    "test_steps_per_second": 31.906,
+    "instance_count": 205
+  },
+  "mathematical_induction": {
+    "test_loss": 0.6931576728820801,
+    "test_accuracy": 0.35714285714285715,
+    "test_roc_auc": 0.5833333333333334,
+    "test_runtime": 0.4536,
+    "test_samples_per_second": 30.862,
+    "test_steps_per_second": 30.862,
+    "instance_count": 14
+  },
+  "metaphor_boolean": {
+    "test_loss": 0.689563512802124,
+    "test_accuracy": 0.5441176470588235,
+    "test_roc_auc": 0.5170008718395815,
+    "test_runtime": 4.264,
+    "test_samples_per_second": 31.895,
+    "test_steps_per_second": 31.895,
+    "instance_count": 136
+  },
+  "metaphor_understanding": {
+    "test_loss": 1.3847697973251343,
+    "test_accuracy": 0.7021276595744681,
+    "test_roc_auc": NaN,
+    "test_runtime": 2.2451,
+    "test_samples_per_second": 20.934,
+    "test_steps_per_second": 20.934,
+    "instance_count": 47
+  },
+  "misconceptions": {
+    "test_loss": 0.6931349039077759,
+    "test_accuracy": 0.5681818181818182,
+    "test_roc_auc": 0.6416666666666667,
+    "test_runtime": 1.3887,
+    "test_samples_per_second": 31.684,
+    "test_steps_per_second": 31.684,
+    "instance_count": 44
+  },
+  "misconceptions_russian": {
+    "test_loss": 0.6931935548782349,
+    "test_accuracy": 0.7,
+    "test_roc_auc": NaN,
+    "test_runtime": 0.3219,
+    "test_samples_per_second": 31.07,
+    "test_steps_per_second": 31.07,
+    "instance_count": 10
+  },
+  "mnist_ascii": {
+    "test_loss": 2.3025786876678467,
+    "test_accuracy": 0.0975609756097561,
+    "test_roc_auc": 0.5072223093740234,
+    "test_runtime": 19.9198,
+    "test_samples_per_second": 10.291,
+    "test_steps_per_second": 10.291,
+    "instance_count": 205
+  },
+  "moral_permissibility": {
+    "test_loss": 0.6926165819168091,
+    "test_accuracy": 0.5147058823529411,
+    "test_roc_auc": 0.5499999999999999,
+    "test_runtime": 2.171,
+    "test_samples_per_second": 31.322,
+    "test_steps_per_second": 31.322,
+    "instance_count": 68
+  },
+  "movie_dialog_same_or_different": {
+    "test_loss": 0.6931442618370056,
+    "test_accuracy": 0.5073170731707317,
+    "test_roc_auc": 0.5342100247760625,
+    "test_runtime": 6.4879,
+    "test_samples_per_second": 31.597,
+    "test_steps_per_second": 31.597,
+    "instance_count": 205
+  },
+  "movie_recommendation": {
+    "test_loss": 0.13162237405776978,
+    "test_accuracy": 0.95,
+    "test_roc_auc": 0.9982662337662339,
+    "test_runtime": 4.7372,
+    "test_samples_per_second": 21.109,
+    "test_steps_per_second": 21.109,
+    "instance_count": 100
+  },
+  "multiemo": {
+    "test_loss": 1.3037437200546265,
+    "test_accuracy": 0.37373737373737376,
+    "test_roc_auc": 0.6280561071942836,
+    "test_runtime": 9.4437,
+    "test_samples_per_second": 20.966,
+    "test_steps_per_second": 20.966,
+    "instance_count": 198
+  },
+  "navigate": {
+    "test_loss": 0.6931441426277161,
+    "test_accuracy": 0.51,
+    "test_roc_auc": 0.5243890224358975,
+    "test_runtime": 6.2205,
+    "test_samples_per_second": 32.152,
+    "test_steps_per_second": 32.152,
+    "instance_count": 200
+  },
+  "persian_idioms": {
+    "test_loss": 1.3860890865325928,
+    "test_accuracy": 0.7692307692307693,
+    "test_roc_auc": NaN,
+    "test_runtime": 0.6256,
+    "test_samples_per_second": 20.781,
+    "test_steps_per_second": 20.781,
+    "instance_count": 13
+  },
+  "phrase_relatedness": {
+    "test_loss": 1.3861119747161865,
+    "test_accuracy": 0.7,
+    "test_roc_auc": 0.8418750000000002,
+    "test_runtime": 0.9784,
+    "test_samples_per_second": 20.441,
+    "test_steps_per_second": 20.441,
+    "instance_count": 20
+  },
+  "play_dialog_same_or_different": {
+    "test_loss": 0.645544707775116,
+    "test_accuracy": 0.6536585365853659,
+    "test_roc_auc": 0.4796089972671852,
+    "test_runtime": 6.5082,
+    "test_samples_per_second": 31.499,
+    "test_steps_per_second": 31.499,
+    "instance_count": 205
+  },
+  "presuppositions_as_nli": {
+    "test_loss": 1.0105047225952148,
+    "test_accuracy": 0.4217687074829932,
+    "test_roc_auc": 0.5282210407972713,
+    "test_runtime": 5.7496,
+    "test_samples_per_second": 25.567,
+    "test_steps_per_second": 25.567,
+    "instance_count": 147
+  },
+  "riddle_sense": {
+    "test_loss": 1.6094095706939697,
+    "test_accuracy": 0.3,
+    "test_roc_auc": NaN,
+    "test_runtime": 0.5645,
+    "test_samples_per_second": 17.716,
+    "test_steps_per_second": 17.716,
+    "instance_count": 10
+  },
+  "salient_translation_error_detection": {
+    "test_loss": 1.7454497814178467,
+    "test_accuracy": 0.27,
+    "test_roc_auc": 0.6328623552879948,
+    "test_runtime": 12.7689,
+    "test_samples_per_second": 15.663,
+    "test_steps_per_second": 15.663,
+    "instance_count": 200
+  },
+  "sentence_ambiguity": {
+    "test_loss": 0.6931383013725281,
+    "test_accuracy": 0.5,
+    "test_roc_auc": 0.6111111111111112,
+    "test_runtime": 0.3929,
+    "test_samples_per_second": 30.543,
+    "test_steps_per_second": 30.543,
+    "instance_count": 12
+  },
+  "simple_ethical_questions": {
+    "test_loss": 1.386163353919983,
+    "test_accuracy": 0.43478260869565216,
+    "test_roc_auc": NaN,
+    "test_runtime": 1.1064,
+    "test_samples_per_second": 20.788,
+    "test_steps_per_second": 20.788,
+    "instance_count": 23
+  },
+  "snarks": {
+    "test_loss": 0.6931445598602295,
+    "test_accuracy": 0.5,
+    "test_roc_auc": 0.5833333333333334,
+    "test_runtime": 1.1351,
+    "test_samples_per_second": 31.714,
+    "test_steps_per_second": 31.714,
+    "instance_count": 36
+  },
+  "social_support": {
+    "test_loss": 0.707758367061615,
+    "test_accuracy": 0.7653631284916201,
+    "test_roc_auc": 0.5690497435006683,
+    "test_runtime": 6.9203,
+    "test_samples_per_second": 25.866,
+    "test_steps_per_second": 25.866,
+    "instance_count": 179
+  },
+  "sports_understanding": {
+    "test_loss": 0.6931408643722534,
+    "test_accuracy": 0.5532994923857868,
+    "test_roc_auc": 0.5032839866555463,
+    "test_runtime": 6.1134,
+    "test_samples_per_second": 32.225,
+    "test_steps_per_second": 32.225,
+    "instance_count": 197
+  },
+  "strategyqa": {
+    "test_loss": 0.6931451559066772,
+    "test_accuracy": 0.5560975609756098,
+    "test_roc_auc": 0.420185078079815,
+    "test_runtime": 6.4101,
+    "test_samples_per_second": 31.981,
+    "test_steps_per_second": 31.981,
+    "instance_count": 205
+  },
+  "suicide_risk": {
+    "test_loss": 1.3862836360931396,
+    "test_accuracy": 0.5,
+    "test_roc_auc": 0.4357142857142857,
+    "test_runtime": 0.4038,
+    "test_samples_per_second": 19.811,
+    "test_steps_per_second": 19.811,
+    "instance_count": 8
+  },
+  "swahili_english_proverbs": {
+    "test_loss": 1.386176347732544,
+    "test_accuracy": 0.4838709677419355,
+    "test_roc_auc": NaN,
+    "test_runtime": 1.4826,
+    "test_samples_per_second": 20.91,
+    "test_steps_per_second": 20.91,
+    "instance_count": 31
+  },
+  "swedish_to_german_proverbs": {
+    "test_loss": 1.3862851858139038,
+    "test_accuracy": 0.21428571428571427,
+    "test_roc_auc": 0.5396825396825398,
+    "test_runtime": 0.6866,
+    "test_samples_per_second": 20.392,
+    "test_steps_per_second": 20.392,
+    "instance_count": 14
+  },
+  "symbol_interpretation": {
+    "test_loss": 1.609405517578125,
+    "test_accuracy": 0.2222222222222222,
+    "test_roc_auc": 0.5187532542804392,
+    "test_runtime": 11.0782,
+    "test_samples_per_second": 17.873,
+    "test_steps_per_second": 17.873,
+    "instance_count": 198
+  },
+  "temporal_sequences": {
+    "test_loss": 0.6736423969268799,
+    "test_accuracy": 0.655,
+    "test_roc_auc": NaN,
+    "test_runtime": 9.5573,
+    "test_samples_per_second": 20.926,
+    "test_steps_per_second": 20.926,
+    "instance_count": 200
+  },
+  "timedial": {
+    "test_loss": 1.0984002351760864,
+    "test_accuracy": 0.44390243902439025,
+    "test_roc_auc": NaN,
+    "test_runtime": 7.9936,
+    "test_samples_per_second": 25.646,
+    "test_steps_per_second": 25.646,
+    "instance_count": 205
+  },
+  "understanding_fables": {
+    "test_loss": 1.6093559265136719,
+    "test_accuracy": 0.2894736842105263,
+    "test_roc_auc": 0.5879819870531945,
+    "test_runtime": 2.1399,
+    "test_samples_per_second": 17.758,
+    "test_steps_per_second": 17.758,
+    "instance_count": 38
+  },
+  "unit_interpretation": {
+    "test_loss": 1.6094424724578857,
+    "test_accuracy": 0.1,
+    "test_roc_auc": 0.44343358395989974,
+    "test_runtime": 1.1294,
+    "test_samples_per_second": 17.708,
+    "test_steps_per_second": 17.708,
+    "instance_count": 20
+  },
+  "vitaminc_fact_verification": {
+    "test_loss": 0.9796131253242493,
+    "test_accuracy": 0.47804878048780486,
+    "test_roc_auc": 0.5980678316014981,
+    "test_runtime": 7.9569,
+    "test_samples_per_second": 25.764,
+    "test_steps_per_second": 25.764,
+    "instance_count": 205
+  },
+  "what_is_the_tao": {
+    "test_loss": 0.6931458115577698,
+    "test_accuracy": 0.5714285714285714,
+    "test_roc_auc": 0.6666666666666666,
+    "test_runtime": 0.238,
+    "test_samples_per_second": 29.412,
+    "test_steps_per_second": 29.412,
+    "instance_count": 7
+  },
+  "which_wiki_edit": {
+    "test_loss": 1.3863571882247925,
+    "test_accuracy": 0.17543859649122806,
+    "test_roc_auc": NaN,
+    "test_runtime": 5.4413,
+    "test_samples_per_second": 20.951,
+    "test_steps_per_second": 20.951,
+    "instance_count": 114
+  },
+  "winowhy": {
+    "test_loss": 0.6131179332733154,
+    "test_accuracy": 0.6390243902439025,
+    "test_roc_auc": 0.7181325067803177,
+    "test_runtime": 6.3853,
+    "test_samples_per_second": 32.105,
+    "test_steps_per_second": 32.105,
+    "instance_count": 205
+  }
+}

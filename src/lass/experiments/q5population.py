@@ -53,9 +53,6 @@ def main():
 
 
 def run(args: Args):
-    assert args.test_with.exists()
-    assert args.test_with.is_dir()
-
     artifacts = Path("./artifacts")
 
     config = cfg.Config(
@@ -85,6 +82,8 @@ def run(args: Args):
     )
 
     if args.test_with:
+        assert args.test_with.exists()
+        assert args.test_with.is_dir()
         config = shared.load_config(args.test_with)
         fine_tune_location = shared.earliest_checkpoint(
             args.test_with.parent / "finetuned"
