@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Literal, Optional, Tuple
 
 from matplotlib.figure import Figure
+from scipy.stats import pearsonr
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -108,11 +109,12 @@ def correlation_plot(data: pd.DataFrame) -> Figure:
     plt.ylim(min_val - 0.1 * min_val, max_val + 0.1 * max_val)
 
     # Plot diagonal line
-    plt.plot([0, 1], [0, 1], transform=plt.gca().transAxes, ls="--", c="k")
+    # plt.plot([0, 1], [0, 1], transform=plt.gca().transAxes, ls="--", c="k")
 
     # Calculate correlation
-    corr = data.corr().loc["subjects", "assessors"]
-    plt.title(f"Correlation: {corr:.3f}")
+    # corr = data.corr("pearson").loc["subjects", "assessors"]
+    corr, p = pearsonr(data.subjects, data.assessors)
+    plt.title(f"Pearson Correlation: {corr:.2f} ({p:.2f})")
 
     return fig
 
